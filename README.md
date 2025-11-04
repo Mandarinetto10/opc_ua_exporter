@@ -3,6 +3,7 @@
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![asyncua](https://img.shields.io/badge/asyncua-latest-green.svg)](https://github.com/FreeOpcUa/opcua-asyncio)
+[![CI](https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/python-app.yml/badge.svg)](https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/python-app.yml)
 
 A professional, feature-rich CLI tool for browsing and exporting OPC UA server address spaces. Built with SOLID principles, asynchronous design, and comprehensive security support.
 
