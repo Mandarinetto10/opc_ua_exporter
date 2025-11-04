@@ -20,14 +20,14 @@ A professional, feature-rich CLI tool for browsing and exporting OPC UA server a
   - [Overview](#overview)
   - [Browse Command](#browse-command)
     - [Common Arguments](#common-arguments)
-    - [--security](#security)
-    - [--mode](#mode)
+    - [Security](#security-1)
+    - [Mode](#mode)
     - [Browse Examples](#browse-examples)
     - [Browse Output](#browse-output)
   - [Export Command](#export-command)
     - [Additional Export Arguments](#additional-export-arguments)
-    - [--format](#format)
-    - [--namespace-filter](#namespace-filter)
+    - [Format](#format)
+    - [Namespace Filter](#namespace-filter)
     - [Export Examples](#export-examples)
   - [Generate Certificate Command](#generate-certificate-command)
     - [Certificate Arguments](#certificate-arguments)
@@ -35,12 +35,14 @@ A professional, feature-rich CLI tool for browsing and exporting OPC UA server a
 - [Project Structure](#project-structure)
 - [Security](#security)
   - [Certificate Management](#certificate-management)
+- [Testing](#testing)
 - [Troubleshooting](#troubleshooting)
   - [Connection Errors](#connection-errors)
   - [Node ID Errors](#node-id-errors)
   - [Security Errors](#security-errors)
 - [Contributing](#contributing)
 - [References](#references)
+- [Authors](#authors)
 - [License](#license)
 
 ---
@@ -147,14 +149,14 @@ python -m opc_browser.cli browse [OPTIONS]
 | `--server-url` | `-s` | **[Required]** OPC UA server endpoint URL | - |
 | `--node-id` | `-n` | Starting node ID for browsing | `i=84` (RootFolder) |
 | `--depth` | `-d` | Maximum recursion depth | `3` |
-| `--security` | `-sec` | [Security policy](#security) | `None` |
+| `--security` | `-sec` | [Security policy](#security-1) | `None` |
 | `--mode` | `-m` | [Security mode](#mode) (required if --security != None) | - |
 | `--cert` | - | Client certificate path (required for security) | - |
 | `--key` | - | Private key path (required for security) | - |
 | `--user` | `-u` | Username for authentication | - |
 | `--password` | `-p` | Password for authentication | - |
 
-### --security
+### Security
 
 Security policy for encrypted communication with the OPC UA server.
 
@@ -174,7 +176,7 @@ Security policy for encrypted communication with the OPC UA server.
 python -m opc_browser.cli browse -s opc.tcp://server:4840 --security Basic256Sha256
 ```
 
-### --mode
+### Mode
 
 Security mode defines the level of protection when using encrypted communication.
 
@@ -302,7 +304,7 @@ python -m opc_browser.cli export [OPTIONS]
 | `--namespace-filter` | - | [Filter by namespace index](#namespace-filter) (e.g., `2`) | `None` |
 | `--include-values` | - | Include current variable values | `False` |
 
-### --format
+### Format
 
 Export format determines the structure and file type of the exported data.
 
@@ -323,7 +325,7 @@ python -m opc_browser.cli export -s opc.tcp://server:4840 --format json
 python -m opc_browser.cli export -s opc.tcp://server:4840 --format xml -o mydata.xml
 ```
 
-### --namespace-filter
+### Namespace Filter
 
 Filter nodes by namespace index to export only application-specific data.
 

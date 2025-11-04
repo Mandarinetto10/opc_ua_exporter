@@ -10,7 +10,7 @@ from loguru import logger
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional, Self
+from typing import Any, Optional
 
 from asyncua import ua
 
