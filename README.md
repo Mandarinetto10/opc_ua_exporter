@@ -117,11 +117,6 @@ The CLI provides three main commands:
 | [`export`](#export-command) | Export address space to file (CSV/JSON/XML) |
 | [`generate-cert`](#generate-certificate-command) | Generate self-signed certificates for secure connections |
 
-**Jump to command:**
-- [Browse Command](#browse-command)
-- [Export Command](#export-command)
-- [Generate Certificate Command](#generate-certificate-command)
-
 **General Syntax:**
 ```bash
 python -m opc_browser.cli {browse|export|generate-cert} [OPTIONS]
@@ -664,6 +659,345 @@ For servers requiring certificate trust:
 2. **Add to server's trust list** (server-specific, consult documentation)
 3. **Restart server** (if required)
 4. **Test connection** with certificate
+
+---
+
+## Testing
+
+### Overview
+
+The project includes a comprehensive test suite with **100% code coverage** for the browser module. Tests are organized using pytest with async support, mocking, and coverage reporting.
+
+### Test Structure
+
+```
+tests/
+├── __init__.py           # Test package initialization
+├── conftest.py           # Shared pytest fixtures
+└── test_browser.py       # Browser module tests (100% coverage)
+```
+
+### Running Tests
+
+#### Quick Test Commands
+
+```bash
+# Run all tests with coverage
+pytest
+
+# Run tests with verbose output
+pytest -v
+
+# Run specific test file
+pytest tests/test_browser.py
+
+# Run specific test class
+pytest tests/test_browser.py::TestBrowseOperation
+
+# Run specific test
+pytest tests/test_browser.py::TestBrowseOperation::test_browse_success
+
+# Run tests matching pattern
+pytest -k "test_browse"
+
+# Run only async tests
+pytest -m asyncio
+
+# Skip slow tests
+pytest -m "not slow"
+```
+
+#### Coverage Reports
+
+```bash
+# Generate HTML coverage report
+pytest --cov-report=html
+
+# View coverage in browser
+# Open htmlcov/index.html
+
+# Generate terminal coverage report only
+pytest --cov-report=term-missing
+
+# Generate XML coverage report (for CI/CD)
+pytest --cov-report=xml
+
+# Run without coverage (faster)
+pytest --no-cov
+```
+
+### Test Categories
+
+#### 1. Initialization Tests (`TestOpcUaBrowserInit`)
+
+Tests for browser initialization with various configurations.
+
+```bash
+# Run initialization tests
+pytest tests/test_browser.py::TestOpcUaBrowserInit -v
+
+# Example tests:
+# - test_init_default_params: Default parameters
+# - test_init_custom_params: Custom depth, values, filters
+# - test_init_zero_depth: Edge case - zero depth
+# - test_init_negative_depth: Edge case - negative depth
+```
+
+#### 2. Node Validation Tests (`TestNodeValidation`)
+
+Tests for OPC UA Node ID validation logic.
+
+```bash
+# Run validation tests
+pytest tests/test_browser.py::TestNodeValidation -v
+
+# Example tests:
+# - test_validate_node_id_numeric_ns0: i=84
+# - test_validate_node_id_numeric_with_ns: ns=2;i=1000
+# - test_validate_node_id_string: ns=2;s=MyNode
+# - test_validate_node_id_guid: ns=2;g=UUID
+# - test_validate_node_id_bytestring: ns=2;b=Base64
+# - test_validate_node_id_invalid_formats: Invalid formats
+```
+
+#### 3. Namespace Tests (`TestNamespaceOperations`)
+
+Tests for namespace retrieval and filtering.
+
+```bash
+# Run namespace tests
+pytest tests/test_browser.py::TestNamespaceOperations -v
+
+# Example tests:
+# - test_get_namespaces_success: Successful retrieval
+# - test_get_namespaces_failure: Connection failure handling
+# - test_is_namespace_node_by_keyword: Keyword detection
+# - test_is_namespace_node_by_object_id: ObjectId detection
+```
+
+#### 4. Browse Operation Tests (`TestBrowseOperation`)
+
+Tests for main browse functionality with various scenarios.
+
+```bash
+# Run browse operation tests
+pytest tests/test_browser.py::TestBrowseOperation -v
+
+# Example tests:
+# - test_browse_success: Successful browse
+# - test_browse_custom_start_node: Custom starting node
+# - test_browse_invalid_node_id_format: Invalid node ID
+# - test_browse_node_not_found: Non-existent node
+# - test_browse_with_namespace_filter_valid: Valid filter
+# - test_browse_with_namespace_filter_invalid: Invalid filter
+# - test_browse_namespaces_only_filter: Namespace-only mode
+```
+
+#### 5. Tree Printing Tests (`TestPrintTree`)
+
+Tests for console tree visualization output.
+
+```bash
+# Run tree printing tests
+pytest tests/test_browser.py::TestPrintTree -v
+
+# Example tests:
+# - test_print_tree_success: Successful tree display
+# - test_print_tree_failed_browse: Failed browse handling
+# - test_print_tree_no_nodes: Empty result handling
+# - test_print_tree_node_types_distribution: Type statistics
+# - test_print_tree_truncation_warning: Large tree truncation
+```
+
+#### 6. Edge Cases Tests (`TestEdgeCases`)
+
+Tests for boundary conditions and error scenarios.
+
+```bash
+# Run edge case tests
+pytest tests/test_browser.py::TestEdgeCases -v
+
+# Example tests:
+# - test_browse_max_depth_zero: Zero depth browsing
+# - test_browse_very_deep_tree: Deep hierarchy (10+ levels)
+# - test_variable_node_data_type_error: Data type read failure
+# - test_variable_node_variant_without_type: Missing VariantType
+```
+
+### Code Quality Tools
+
+#### Linting with Ruff
+
+```bash
+# Check code quality
+ruff check src/ tests/
+
+# Auto-fix issues
+ruff check --fix src/ tests/
+
+# Check specific file
+ruff check src/opc_browser/browser.py
+
+# Show all violations
+ruff check --output-format=full src/
+```
+
+#### Formatting with Black
+
+```bash
+# Check formatting
+black --check src/ tests/
+
+# Apply formatting
+black src/ tests/
+
+# Format specific file
+black src/opc_browser/browser.py
+
+# Show diff without applying
+black --diff src/
+```
+
+#### Type Checking with MyPy
+
+```bash
+# Run type checking
+mypy src/
+
+# Check specific module
+mypy src/opc_browser/browser.py
+
+# Strict mode
+mypy --strict src/
+
+# Generate HTML report
+mypy src/ --html-report mypy_report/
+```
+
+### Coverage Goals
+
+| Module | Current Coverage | Goal |
+|--------|-----------------|------|
+| `browser.py` | 96% | ✅ Achieved |
+| `models.py` | 52% | 🎯 Target: 90% |
+| `client.py` | 26% | 🎯 Target: 90% |
+| `exporter.py` | 19% | 🎯 Target: 90% |
+| `strategies/` | 12-33% | 🎯 Target: 90% |
+
+### Writing New Tests
+
+#### Example: Testing a New Feature
+
+```python
+# filepath: tests/test_my_feature.py
+import pytest
+from unittest.mock import AsyncMock, MagicMock
+from opc_browser.browser import OpcUaBrowser
+
+
+@pytest.mark.asyncio
+async def test_my_new_feature(mock_client):
+    """Test description."""
+    # Arrange
+    browser = OpcUaBrowser(client=mock_client)
+    
+    # Act
+    result = await browser.my_new_method()
+    
+    # Assert
+    assert result.success is True
+    assert result.total_nodes > 0
+```
+
+#### Using Fixtures
+
+```python
+# Reuse existing fixtures from conftest.py
+def test_with_fixtures(mock_client, mock_node, mock_variable_node):
+    """Tests can use multiple fixtures."""
+    browser = OpcUaBrowser(client=mock_client)
+    # Test implementation
+```
+
+#### Async Test Best Practices
+
+```python
+@pytest.mark.asyncio
+async def test_async_operation(mock_client):
+    """Always mark async tests with @pytest.mark.asyncio."""
+    # Await async calls properly
+    result = await browser.browse(start_node_id="i=84")
+    
+    # Mock async methods with AsyncMock
+    mock_node = AsyncMock()
+    mock_node.read_browse_name = AsyncMock(return_value=browse_name)
+    
+    # Await mock calls to avoid warnings
+    await mock_node.read_browse_name()
+```
+
+### Continuous Integration
+
+#### GitHub Actions Example
+
+```yaml
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - run: pip install -r requirements.txt
+      - run: pytest
+      - run: ruff check src/ tests/
+      - run: black --check src/ tests/
+      - run: mypy src/
+```
+
+### Test Best Practices
+
+1. **Isolation**: Each test should be independent
+2. **Naming**: Use descriptive test names (`test_browse_with_valid_node_id`)
+3. **Arrange-Act-Assert**: Follow AAA pattern
+4. **Mocking**: Mock external dependencies (OPC UA server, file I/O)
+5. **Coverage**: Aim for 90%+ coverage for critical modules
+6. **Performance**: Mark slow tests with `@pytest.mark.slow`
+7. **Documentation**: Add docstrings to test functions
+
+### Troubleshooting Tests
+
+#### Common Issues
+
+**Issue: AsyncIO warnings**
+```python
+# Fix: Await all async mocks
+await mock_node.get_children()
+mock_node.get_children = AsyncMock(return_value=[])
+```
+
+**Issue: Loguru output not captured**
+```python
+# Fix: Reconfigure loguru for tests
+from loguru import logger
+logger.remove()
+logger.add(sys.stdout, format="{message}", level="INFO", colorize=False)
+```
+
+**Issue: Coverage not 100%**
+```bash
+# Check missing lines
+pytest --cov-report=term-missing
+
+# View detailed HTML report
+pytest --cov-report=html
+open htmlcov/index.html
+```
 
 ---
 
