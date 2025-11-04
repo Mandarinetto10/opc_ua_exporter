@@ -1,171 +1,179 @@
-# Setup Guide - OPC UA Browser/Exporter
+# Setup Guide - OPC UA Exporter
 
-Questa guida fornisce istruzioni dettagliate per configurare l'ambiente di sviluppo e installare tutte le dipendenze necessarie per il progetto OPC UA Browser/Exporter.
+This guide provides detailed instructions for setting up the development environment and installing all necessary dependencies for the OPC UA Exporter project.
 
-## Prerequisiti
+## Prerequisites
 
-- **Python 3.10 o superiore** installato sul sistema
-- **pip** (package installer per Python)
-- **git** (opzionale, per clonare il repository)
+- **Python 3.10 or higher** installed on your system
+- **pip** (Python package installer)
+- **git** (optional, for cloning the repository)
 
-### Verifica della Versione Python
+### Verify Python Version
 
 ```bash
 python --version
-# oppure
+# or
 python3 --version
 ```
 
-Se la versione è inferiore a 3.10, aggiorna Python prima di procedere.
+If your version is lower than 3.10, upgrade Python before proceeding.
 
-## Passo 1: Clonare o Scaricare il Progetto
+## Step 1: Clone or Download the Project
 
-### Opzione A: Clonare con Git
-
-```bash
-git clone <repository-url>
-cd opc-ua-browser
-```
-
-### Opzione B: Scaricare e Estrarre
-
-Scarica il progetto come archivio ZIP ed estrailo in una directory locale.
-
-## Passo 2: Creare l'Ambiente Virtuale
-
-La creazione di un ambiente virtuale isola le dipendenze del progetto dal sistema Python globale.
-
-### Su Linux/macOS
+### Option A: Clone with Git
 
 ```bash
-python3 -m venv venv
+git clone https://github.com/Mandarinetto10/opc_ua_exporter.git
+cd opc_ua_exporter
 ```
 
-### Su Windows
+### Option B: Download and Extract
+
+Download the project as a ZIP archive and extract it to a local directory.
+
+## Step 2: Create Virtual Environment
+
+Creating a virtual environment isolates the project dependencies from the global Python system.
+
+### On Linux/macOS
+
+```bash
+python3 -m venv .venv
+```
+
+### On Windows
 
 ```cmd
-python -m venv venv
+python -m venv .venv
 ```
 
-## Passo 3: Attivare l'Ambiente Virtuale
+## Step 3: Activate Virtual Environment
 
-### Su Linux/macOS
+### On Linux/macOS
 
 ```bash
-source venv/bin/activate
+source .venv/bin/activate
 ```
 
-### Su Windows (Command Prompt)
+### On Windows (Command Prompt)
 
 ```cmd
-venv\Scripts\activate.bat
+.venv\Scripts\activate.bat
 ```
 
-### Su Windows (PowerShell)
+### On Windows (PowerShell)
 
 ```powershell
-venv\Scripts\Activate.ps1
+.venv\Scripts\Activate.ps1
 ```
 
-**Nota:** Se ricevi un errore di policy su Windows PowerShell, esegui:
+**Note:** If you receive a policy error on Windows PowerShell, run:
 
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-Una volta attivato, dovresti vedere `(venv)` all'inizio del prompt della tua shell.
+Once activated, you should see `(.venv)` at the beginning of your shell prompt.
 
-## Passo 4: Aggiornare pip
+## Step 4: Upgrade pip
 
 ```bash
 pip install --upgrade pip
 ```
 
-## Passo 5: Installare le Dipendenze
+## Step 5: Install Dependencies
 
-### Installazione Base
+### Basic Installation
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Installazione in Modalità Sviluppo (con dipendenze opzionali)
+### Development Mode Installation (with optional dependencies)
 
 ```bash
 pip install -e ".[dev]"
 ```
 
-Questo comando installa il pacchetto in modalità "editable" permettendoti di modificare il codice senza dover reinstallare.
+This command installs the package in "editable" mode, allowing you to modify the code without reinstalling.
 
-## Passo 6: Verificare l'Installazione
+## Step 6: Verify Installation
 
-Controlla che tutte le dipendenze siano state installate correttamente:
+Check that all dependencies have been installed correctly:
 
 ```bash
 pip list
 ```
 
-Dovresti vedere elencate le seguenti librerie:
+You should see the following libraries listed:
 - `asyncua`
 - `loguru`
-- `tqdm`
+- `cryptography`
 
-## Passo 7: Testare l'Installazione
+## Step 7: Test Installation
 
-Verifica che la CLI sia accessibile:
+Verify that the CLI is accessible:
 
 ```bash
 python -m opc_browser.cli --help
 ```
 
-oppure, se hai installato il progetto:
+You should see the help output with all available commands and options.
+
+## Step 8: Generate Certificates (Optional but Recommended)
+
+Generate self-signed certificates for secure OPC UA connections:
 
 ```bash
-opc-browser --help
+python -m opc_browser.cli generate-cert
 ```
 
-Dovresti vedere l'output dell'help con tutti i comandi e le opzioni disponibili.
+This creates certificates in the `certificates/` directory.
 
 ## Troubleshooting
 
-### Problema: "ModuleNotFoundError"
+### Issue: "ModuleNotFoundError"
 
-**Soluzione:** Assicurati che l'ambiente virtuale sia attivato e che tutte le dipendenze siano state installate correttamente.
+**Solution:** Make sure the virtual environment is activated and all dependencies have been installed correctly.
 
-### Problema: Errori di Permesso durante l'Installazione
+### Issue: Permission Errors During Installation
 
-**Soluzione su Linux/macOS:**
+**Solution on Linux/macOS:**
 ```bash
 pip install --user -r requirements.txt
 ```
 
-### Problema: Conflitti di Dipendenze
+### Issue: Dependency Conflicts
 
-**Soluzione:** Ricrea l'ambiente virtuale da zero:
+**Solution:** Recreate the virtual environment from scratch:
 
 ```bash
 deactivate
-rm -rf venv
-python3 -m venv venv
-source venv/bin/activate  # o activate.bat su Windows
+rm -rf .venv  # Linux/macOS
+# or
+rmdir /s .venv  # Windows
+
+python3 -m venv .venv
+source .venv/bin/activate  # or .venv\Scripts\activate on Windows
 pip install -r requirements.txt
 ```
 
-## Disattivare l'Ambiente Virtuale
+### Issue: OpenSSL Errors on Windows
 
-Quando hai finito di lavorare sul progetto:
+**Solution:** Ensure you have the latest version of Python 3.10+ which includes updated OpenSSL libraries.
+
+## Deactivate Virtual Environment
+
+When you're done working on the project:
 
 ```bash
 deactivate
 ```
 
-## Prossimi Passi
+## Support
 
-Consulta il file `README.md` per esempi di utilizzo e documentazione completa della CLI.
-
-## Supporto
-
-Per problemi o domande:
-- Verifica la documentazione nel `README.md`
-- Controlla i requisiti di sistema
-- Consulta la documentazione ufficiale di [asyncua](https://github.com/FreeOpcUa/opcua-asyncio)
+For issues or questions:
+- Check the documentation in [README.md](README.md)
+- Verify system requirements
+- Consult the official [asyncua documentation](https://github.com/FreeOpcUa/opcua-asyncio)
+- Open an issue on [GitHub](https://github.com/Mandarinetto10/opc_ua_exporter/issues)

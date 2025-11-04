@@ -1,263 +1,408 @@
-# 🔌 OPC UA Browser/Exporter
+# OPC UA Exporter
 
-Un tool CLI professionale e completo per navigare ed esportare l'Address Space di server OPC UA. Implementato seguendo i principi SOLID, SRP, DRY e OCP con supporto asincrono completo.
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![asyncua](https://img.shields.io/badge/asyncua-latest-green.svg)](https://github.com/FreeOpcUa/opcua-asyncio)
 
-## ✨ Caratteristiche
-
-- 🌐 **Client OPC UA Asincrono** basato su `asyncua`
-- 🔍 **Browsing Ricorsivo** con controllo della profondità
-- 📊 **Export Multi-Formato** (CSV, JSON, XML) tramite Strategy Pattern
-- 🔐 **Autenticazione Completa** (username/password, security policies con certificati)
-- 🛡️ **Security Policies** complete (Basic256Sha256, AES128/256, ecc.)
-- 📝 **Logging Professionale** con `loguru` e messaggi di errore dettagliati
-- ⚡ **Gestione Eccezioni Completa** con hint contestuali
-- 🏗️ **Architettura Modulare** e testabile
-- 🐍 **Type Hints** completi per Python 3.10+
-
-## 📋 Requisiti
-
-- Python 3.10 o superiore
-- Accesso a un server OPC UA (locale o remoto)
-- Certificati SSL (per connessioni sicure)
-
-## 🚀 Installazione
-
-Consulta il file [SETUP.md](SETUP.md) per istruzioni dettagliate passo-passo.
-
-**Quick Start:**
-
-```bash
-# Crea ambiente virtuale
-python3 -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-
-# Installa dipendenze
-pip install -r requirements.txt
-
-# Genera certificati (se necessario per security)
-python -m opc_browser.cli generate-cert
-
-# Verifica installazione
-python -m opc_browser.cli --help
-```
-
-## 📖 Utilizzo
-
-La CLI supporta tre sottocomandi principali:
-- `browse` - Navigazione interattiva dell'address space
-- `export` - Esportazione nodi su file (CSV/JSON/XML)
-- `generate-cert` - Generazione certificati self-signed per connessioni sicure
-
-### Sintassi Generale
-
-```bash
-python -m opc_browser.cli {browse|export|generate-cert} [OPZIONI]
-```
-
-**⚠️ Nota Importante**: 
-- All'avvio di ogni comando, il tool mostra un riepilogo completo dei parametri utilizzati
-- Se la connessione al server fallisce, il tree non viene stampato
-- Gli errori sono loggati con hint contestuali per facilitare il troubleshooting
+A professional, feature-rich CLI tool for browsing and exporting OPC UA server address spaces. Built with SOLID principles, asynchronous design, and comprehensive security support.
 
 ---
 
-## 🔍 Comando: `browse`
+## Table of Contents
 
-Naviga l'Address Space del server e visualizza la struttura ad albero nella console.
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+  - [Quick Start](#quick-start)
+  - [Detailed Setup](#detailed-setup)
+- [Usage](#usage)
+  - [Overview](#overview)
+  - [Browse Command](#browse-command)
+    - [Common Arguments](#common-arguments)
+    - [--security](#security)
+    - [--mode](#mode)
+    - [Browse Examples](#browse-examples)
+    - [Browse Output](#browse-output)
+  - [Export Command](#export-command)
+    - [Additional Export Arguments](#additional-export-arguments)
+    - [--format](#format)
+    - [--namespace-filter](#namespace-filter)
+    - [Export Examples](#export-examples)
+  - [Generate Certificate Command](#generate-certificate-command)
+    - [Certificate Arguments](#certificate-arguments)
+    - [Certificate Examples](#certificate-examples)
+- [Project Structure](#project-structure)
+- [Security](#security)
+  - [Certificate Management](#certificate-management)
+- [Troubleshooting](#troubleshooting)
+  - [Connection Errors](#connection-errors)
+  - [Node ID Errors](#node-id-errors)
+  - [Security Errors](#security-errors)
+- [Contributing](#contributing)
+- [References](#references)
+- [License](#license)
 
-### Comportamento Dettagliato
+---
 
-1. **Validazione Parametri**: Controlla formato Node ID e configurazione security
-2. **Logging Parametri**: Mostra tutti i parametri di connessione (URL, hostname, porta, security, auth)
-3. **Connessione Sicura**: Stabilisce connessione con security policy e certificati se configurati
-4. **Browse Ricorsivo**: Naviga l'address space fino alla profondità configurata
-5. **Visualizzazione Tree**: Mostra l'albero dei nodi con emoji, tipi e valori
-6. **Statistiche Finali**: Mostra summary con totale nodi, profondità, namespaces
+## Features
 
-### Output Tipico
+- 🌐 **Asynchronous OPC UA Client** - Built on `asyncua` for high performance
+- 🔍 **Recursive Browsing** - Navigate address space with configurable depth control
+- 📊 **Multi-Format Export** - CSV, JSON, XML via Strategy Pattern
+- 🔐 **Complete Authentication** - Username/password + certificate-based security
+- 🛡️ **Security Policies** - Support for all OPC UA security levels (Basic256Sha256, AES128/256, etc.)
+- 📝 **Professional Logging** - `loguru` integration with contextual error hints
+- ⚡ **Robust Error Handling** - Comprehensive exception management with troubleshooting guidance
+- 🏗️ **Modular Architecture** - SOLID principles, testable, and extensible
+- 🐍 **Type-Safe** - Full type hints for Python 3.10+
+- Visual Tree Display - Console tree visualization with emoji icons
+- Namespace Filtering - Filter nodes by namespace index
+- Hierarchical Paths - Full OPC UA path reconstruction for each node
 
-````text
-# Esempio di output del comando browse
+---
 
-└── Objects
-    ├── Server
-    │   ├── ServerStatus
-    │   ├── SecurityPolicy
-    │   └── UserTokenPolicies
-    ├── Objects
-    │   ├── MyObject
-    │   │   ├── Variable1
-    │   │   └── Variable2
-    │   └── AnotherObject
-    │       └── VariableA
-    └── Views
-        └── MyView
-            ├── Component1
-            └── Component2
-````
+## Requirements
 
-### Argomenti Comuni
+- **Python**: 3.10 or higher
+- **OPC UA Server**: Access to a local or remote OPC UA server
+- **SSL Certificates**: Required for secure connections (can be auto-generated)
 
-| Argomento | Breve | Descrizione | Default |
-|-----------|-------|-------------|---------|
-| `--server-url` | `-s` | **[Obbligatorio]** Endpoint del server OPC UA | - |
-| `--node-id` | `-n` | Node ID di partenza | `i=84` (RootFolder) |
-| `--depth` | `-d` | Profondità massima di navigazione | `3` |
-| `--security` | `-sec` | Security policy | `None` |
-| `--mode` | `-m` | Security mode (richiesto se --security != None) | - |
-| `--cert` | - | Path certificato client (richiesto per security) | - |
-| `--key` | - | Path chiave privata client (richiesto per security) | - |
-| `--user` | `-u` | Username per autenticazione | - |
-| `--password` | `-p` | Password per autenticazione | - |
+---
 
-### Security Policies Supportate
+## Installation
 
-- **None**: Nessuna sicurezza
-- **Basic256**: Legacy (deprecato, ma supportato)
-- **Basic128Rsa15**: Legacy (deprecato, ma supportato)
-- **Basic256Sha256**: Sicurezza moderna standard
-- **Aes128_Sha256_RsaOaep**: AES 128-bit
-- **Aes256_Sha256_RsaPss**: AES 256-bit (massima sicurezza)
+### Quick Start
 
-### Security Modes
+```bash
+# Clone repository
+git clone https://github.com/Mandarinetto10/opc_ua_exporter.git
+cd opc_ua_exporter
 
-- **Sign**: Solo firma digitale
-- **SignAndEncrypt**: Firma e cifratura (raccomandato)
+# Create virtual environment
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-### Esempi di Browse
+# Install dependencies
+pip install -r requirements.txt
 
-#### Esempio 1: Connessione Base (Nessuna Autenticazione)
+# Generate certificates
+python -m opc_browser.cli generate-cert
+
+# Verify installation
+python -m opc_browser.cli --help
+```
+
+### Detailed Setup
+
+For step-by-step installation instructions, see [SETUP.md](SETUP.md).
+
+**Key Installation Steps:**
+1. Python 3.10+ installation
+2. Virtual environment creation
+3. Dependency installation via `requirements.txt`
+4. Certificate generation for secure connections
+5. Verification of asyncua and cryptography packages
+
+---
+
+## Usage
+
+### Overview
+
+The CLI provides three main commands:
+
+| Command | Description |
+|---------|-------------|
+| [`browse`](#browse-command) | Navigate and display OPC UA address space tree |
+| [`export`](#export-command) | Export address space to file (CSV/JSON/XML) |
+| [`generate-cert`](#generate-certificate-command) | Generate self-signed certificates for secure connections |
+
+**Jump to command:**
+- [Browse Command](#browse-command)
+- [Export Command](#export-command)
+- [Generate Certificate Command](#generate-certificate-command)
+
+**General Syntax:**
+```bash
+python -m opc_browser.cli {browse|export|generate-cert} [OPTIONS]
+```
+
+**Important Notes:**
+- ✅ All commands display a comprehensive parameter summary at startup
+- ⚠️ Connection failures prevent tree display (errors logged with hints)
+- 📝 All operations provide detailed logging for troubleshooting
+
+---
+
+## Browse Command
+
+Browse the OPC UA address space and display a visual tree structure in the console.
+
+### Syntax
+
+```bash
+python -m opc_browser.cli browse [OPTIONS]
+```
+
+### Common Arguments
+
+| Argument | Short | Description | Default |
+|----------|-------|-------------|---------|
+| `--server-url` | `-s` | **[Required]** OPC UA server endpoint URL | - |
+| `--node-id` | `-n` | Starting node ID for browsing | `i=84` (RootFolder) |
+| `--depth` | `-d` | Maximum recursion depth | `3` |
+| `--security` | `-sec` | [Security policy](#security) | `None` |
+| `--mode` | `-m` | [Security mode](#mode) (required if --security != None) | - |
+| `--cert` | - | Client certificate path (required for security) | - |
+| `--key` | - | Private key path (required for security) | - |
+| `--user` | `-u` | Username for authentication | - |
+| `--password` | `-p` | Password for authentication | - |
+
+### --security
+
+Security policy for encrypted communication with the OPC UA server.
+
+**Available Policies:**
+
+| Policy | Encryption | Recommendation | OPC UA Version |
+|--------|------------|----------------|----------------|
+| `None` | No encryption | Testing only, trusted networks | All |
+| `Basic128Rsa15` | RSA 1024-bit | **Deprecated** - Legacy only | 1.0 |
+| `Basic256` | RSA 2048-bit | **Deprecated** - Legacy only | 1.0 |
+| `Basic256Sha256` | RSA 2048-bit + SHA256 | **Recommended** for general use | 1.02+ |
+| `Aes128_Sha256_RsaOaep` | AES-128 + SHA256 | Modern, good performance | 1.04+ |
+| `Aes256_Sha256_RsaPss` | AES-256 + SHA256 | **Maximum security** | 1.04+ |
+
+**Usage:**
+```bash
+python -m opc_browser.cli browse -s opc.tcp://server:4840 --security Basic256Sha256
+```
+
+### --mode
+
+Security mode defines the level of protection when using encrypted communication.
+
+**Available Modes:**
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| `Sign` | Digital signature only | Integrity verification without encryption |
+| `SignAndEncrypt` | Signature + encryption | **Recommended** - Full protection |
+
+**Usage:**
+```bash
+python -m opc_browser.cli browse -s opc.tcp://server:4840 --security Basic256Sha256 --mode SignAndEncrypt
+```
+
+**Note:** `--mode` is required when `--security` is not `None`.
+
+### Browse Examples
+
+#### Example 1: Basic Connection (No Authentication)
 
 ```bash
 python -m opc_browser.cli browse --server-url opc.tcp://localhost:4840
 ```
 
-#### Esempio 2: Browse con Profondità Personalizzata
+**Output:**
+- Connects to server without credentials
+- Browses from RootFolder (i=84)
+- Maximum depth of 3 levels
+- Displays tree with node types, names, and IDs
+
+#### Example 2: Custom Starting Node with Depth
 
 ```bash
 python -m opc_browser.cli browse -s opc.tcp://localhost:4840 -n "ns=2;i=1000" -d 5
 ```
 
-#### Esempio 3: Browse con Autenticazione
+**Behavior:**
+- Starts from custom node `ns=2;i=1000`
+- Explores up to 5 levels deep
+- Shows namespace prefix for non-standard namespaces
+
+#### Example 3: Username/Password Authentication
 
 ```bash
 python -m opc_browser.cli browse -s opc.tcp://192.168.1.100:4840 -u admin -p password123
 ```
 
-#### Esempio 4: Browse con Security Policy e Certificati
+**Use Case:**
+- Server requires user authentication
+- No encryption (suitable for trusted networks)
+
+#### Example 4: Secure Connection with Certificates
 
 ```bash
-python -m opc_browser.cli browse \
-  -s opc.tcp://secure-server.com:4840 \
-  --security Basic256Sha256 \
-  --mode SignAndEncrypt \
-  --cert certificates/client_cert.pem \
-  --key certificates/client_key.pem \
-  -u operator \
-  -p secure_pass
+python -m opc_browser.cli browse -s opc.tcp://secure-server.com:4840 --security Basic256Sha256 --mode SignAndEncrypt --cert certificates/client_cert.pem --key certificates/client_key.pem -u operator -p secure_pass
 ```
 
-#### Esempio 5: Browse con Massima Sicurezza (AES256)
+**Features:**
+- SHA256-based security policy
+- Encrypted communication
+- Certificate-based authentication
+- Username/password credentials
+
+#### Example 5: Maximum Security (AES256)
 
 ```bash
-python -m opc_browser.cli browse \
-  -s opc.tcp://factory.com:4840 \
-  --security Aes256_Sha256_RsaPss \
-  --mode SignAndEncrypt \
-  --cert certs/factory_client.pem \
-  --key certs/factory_key.pem \
-  -u admin \
-  -p admin_pass \
-  -d 5
+python -m opc_browser.cli browse -s opc.tcp://factory.com:4840 --security Aes256_Sha256_RsaPss --mode SignAndEncrypt --cert certs/factory_client.pem --key certs/factory_key.pem -u admin -p admin_pass -d 5
+```
+
+**Best For:**
+- Critical infrastructure
+- Regulated industries
+- Maximum data protection
+
+### Browse Output
+
+The browse command displays:
+
+1. **Parameter Summary** - All connection settings
+2. **Summary Statistics** - Total nodes, depth, namespaces
+3. **Node Type Distribution** - Count by type (Object, Variable, etc.)
+4. **Namespace List** - All discovered namespaces with node counts
+5. **Visual Tree** - Hierarchical structure with:
+   - 📁 Objects
+   - 📊 Variables with data types and values
+   - ⚙️ Methods
+   - 📦 Object Types
+   - 🔗 References
+6. **NodeID Hints** - IDs shown for root and depth-1 nodes
+
+**Example Tree Output:**
+```
+└── 📁 Objects
+    ├── 📁 Server
+    │   ├── 📊 ServerStatus [ServerStatusDataType]
+    │   ├── 📊 State [ServerState] = Running
+    │   └── 📁 Namespaces
+    │       💡 NodeId: ns=0;i=2253
+    ├── 📁 DeviceSet [ns=2]
+    │   ├── 📊 Temperature [Double] = 23.5
+    │   └── 📊 Pressure [Double] = 101.3
+    └── 👁️ Views
 ```
 
 ---
 
-## 💾 Comando: `export`
+## Export Command
 
-Esporta l'Address Space in formati strutturati (CSV, JSON, XML).
+Export the OPC UA address space to structured file formats (CSV, JSON, XML).
 
-### Argomenti Aggiuntivi per Export
+### Syntax
 
-| Argomento | Breve | Descrizione | Default |
-|-----------|-------|-------------|---------|
-| `--format` | `-f` | Formato di export: `csv`, `json`, `xml` | `csv` |
-| `--output` | `-o` | Percorso file di output | `export/opcua_export_<timestamp>.<format>` |
-| `--namespaces-only` | - | Esporta solo informazioni sui Namespace | `False` |
-| `--namespace-filter` | - | Esporta solo nodi da namespace specifico (indice numerico, es. `2`) | `None` |
-| `--include-values` | - | Include i valori correnti delle variabili | `False` |
-
-### 🎯 Filtrare per Namespace
-
-Il filtro per namespace è essenziale quando vuoi esportare solo i nodi di un namespace applicativo specifico (es. `urn:Studio`).
-
-**Come trovare l'indice del namespace:**
-1. **Opzione 1 - Browse iniziale senza filtro:**
-   ```bash
-   python -m opc_browser.cli browse -s opc.tcp://localhost:48010 -u admin -p pass -d 1
-   ```
-   
-   L'output mostrerà:
-   ```
-   🌐 NAMESPACES:
-      [0] http://opcfoundation.org/UA/
-      [1] urn:WSM-01153:Studio:OpcUaServer
-      [2] urn:Studio
-          └─ 70 nodes
-   ```
-
-2. **Opzione 2 - Export completo e analisi:**
-   ```bash
-   python -m opc_browser.cli export -s opc.tcp://localhost:48010 -f csv -o temp.csv
-   ```
-   
-   Guarda la sezione `# Namespaces` in fondo al CSV.
-
-**Una volta identificato l'indice (es. 2 per `urn:Studio`):**
 ```bash
-# Esporta SOLO i nodi del namespace urn:Studio (index 2)
-python -m opc_browser.cli export \
-  -s opc.tcp://localhost:48010 \
-  -u Admin -p 1 \
-  --security Aes128_Sha256_RsaOaep \
-  --mode Sign \
-  --cert certificates/client_cert.pem \
-  --key certificates/client_key.pem \
-  --namespace-filter 2 \
-  -d 10 \
-  -f csv \
-  -o studio_namespace.csv
+python -m opc_browser.cli export [OPTIONS]
 ```
 
-**Cosa succede:**
-- ✅ Il browser naviga tutto l'address space fino a depth 10
-- ✅ Al termine del browse, filtra e mantiene SOLO i nodi con `namespace_index=2`
-- ✅ L'export conterrà solo nodi di `urn:Studio`
-- ✅ Il Summary mostrerà il numero effettivo di nodi filtrati
+### Additional Export Arguments
 
-### Esempi di Export
+| Argument | Short | Description | Default |
+|----------|-------|-------------|---------|
+| `--format` | `-f` | [See export formats](#format) | `csv` |
+| `--output` | `-o` | Output file path | `export/opcua_export_<timestamp>.<format>` |
+| `--namespaces-only` | - | Export only namespace-related nodes | `False` |
+| `--namespace-filter` | - | [Filter by namespace index](#namespace-filter) (e.g., `2`) | `None` |
+| `--include-values` | - | Include current variable values | `False` |
 
-#### Esempio 1: Export Base in CSV
+### --format
+
+Export format determines the structure and file type of the exported data.
+
+**Available Formats:**
+
+| Format | Best For | Features |
+|--------|----------|----------|
+| `csv` | Excel, data analysis | UTF-8 with BOM, comma-delimited, auto-quoted fields |
+| `json` | Web apps, APIs | Pretty-printed, ISO timestamps, hierarchical structure |
+| `xml` | Enterprise systems | Schema-compliant, indented, metadata sections |
+
+**Usage:**
+```bash
+# Export as JSON
+python -m opc_browser.cli export -s opc.tcp://server:4840 --format json
+
+# Export as XML
+python -m opc_browser.cli export -s opc.tcp://server:4840 --format xml -o mydata.xml
+```
+
+### --namespace-filter
+
+Filter nodes by namespace index to export only application-specific data.
+
+**Why Use Namespace Filtering?**
+- Exclude OPC UA standard nodes (namespace 0)
+- Focus on application-specific nodes (namespace 2, 3, etc.)
+- Reduce export file size
+- Improve data relevance
+
+#### Step 1: Identify Namespace Index
+
+**Option A - Quick Browse:**
+```bash
+python -m opc_browser.cli browse -s opc.tcp://localhost:48010 -u admin -p pass -d 1
+```
+
+**Example Output:**
+```
+🌐 NAMESPACES:
+   [0] http://opcfoundation.org/UA/
+   [1] urn:yourhostname:Studio:OpcUaServer
+   [2] urn:Studio
+       └─ 70 nodes
+```
+
+**Option B - Full Export and Analysis:**
+```bash
+python -m opc_browser.cli export -s opc.tcp://localhost:48010 -f csv -o temp.csv
+# Check "# Namespaces" section at end of CSV
+```
+
+#### Step 2: Apply Namespace Filter
+
+**Usage:**
+```bash
+# Export only namespace 2 nodes
+python -m opc_browser.cli export -s opc.tcp://localhost:48010 -u Admin -p 1 --namespace-filter 2 -d 10 -f csv -o filtered_export.csv
+```
+
+**Result:**
+- ✅ Browses entire address space (depth 10)
+- ✅ Filters nodes to only namespace index 2
+- ✅ Exports filtered subset to CSV
+- ✅ Summary shows actual filtered node count
+
+### Export Examples
+
+#### Example 1: Basic CSV Export
 
 ```bash
 python -m opc_browser.cli export -s opc.tcp://localhost:4840
 ```
 
-Output: `export/opcua_export_20250104_143022.csv`
+**Output:** `export/opcua_export_20250104_143022.csv`
 
-#### Esempio 2: Export in JSON con Nome File Personalizzato
+**CSV Structure:**
+- Headers: NodeId, BrowseName, DisplayName, FullPath, NodeClass, DataType, Value, ParentId, Depth, NamespaceIndex, IsNamespaceNode, Timestamp
+- Data rows with all node information
+- Summary section with statistics
+- Namespace section with index-to-URI mapping
+
+#### Example 2: JSON Export with Custom Filename
 
 ```bash
-python -m opc_browser.cli export -s opc.tcp://localhost:4840 -f json -o mio_server.json
+python -m opc_browser.cli export -s opc.tcp://localhost:4840 -f json -o my_server.json
 ```
 
-**Struttura JSON generata:**
+**JSON Structure:**
 ```json
 {
   "metadata": {
     "total_nodes": 150,
     "max_depth_reached": 3,
-    "success": true
+    "success": true,
+    "export_timestamp": "2025-01-04T14:30:22.123456"
   },
   "namespaces": [
     {"index": 0, "uri": "http://opcfoundation.org/UA/"},
@@ -268,19 +413,22 @@ python -m opc_browser.cli export -s opc.tcp://localhost:4840 -f json -o mio_serv
       "node_id": "i=84",
       "browse_name": "Root",
       "display_name": "Root",
-      "node_class": "Object"
+      "full_path": "Root",
+      "node_class": "Object",
+      "depth": 0,
+      "namespace_index": 0
     }
   ]
 }
 ```
 
-#### Esempio 3: Export in XML con Valori delle Variabili
+#### Example 3: XML Export with Values
 
 ```bash
-python -m opc_browser.cli export -s opc.tcp://localhost:4840 -f xml -o dati_completi.xml --include-values
+python -m opc_browser.cli export -s opc.tcp://localhost:4840 -f xml -o complete_data.xml --include-values
 ```
 
-**Struttura XML generata:**
+**XML Structure:**
 ```xml
 <?xml version='1.0' encoding='utf-8'?>
 <OpcUaAddressSpace>
@@ -288,6 +436,7 @@ python -m opc_browser.cli export -s opc.tcp://localhost:4840 -f xml -o dati_comp
     <TotalNodes>150</TotalNodes>
     <MaxDepthReached>3</MaxDepthReached>
     <Success>True</Success>
+    <ExportTimestamp>2025-01-04T14:30:22.123456</ExportTimestamp>
   </Metadata>
   <Namespaces>
     <Namespace>
@@ -300,317 +449,370 @@ python -m opc_browser.cli export -s opc.tcp://localhost:4840 -f xml -o dati_comp
       <NodeId>i=84</NodeId>
       <BrowseName>Root</BrowseName>
       <DisplayName>Root</DisplayName>
+      <FullPath>Root</FullPath>
       <NodeClass>Object</NodeClass>
       <Depth>0</Depth>
+      <NamespaceIndex>0</NamespaceIndex>
     </Node>
   </Nodes>
 </OpcUaAddressSpace>
 ```
 
-#### Esempio 4: Export Solo Namespace
+#### Example 4: Namespace-Only Export
 
 ```bash
 python -m opc_browser.cli export -s opc.tcp://localhost:4840 -f json -o namespaces.json --namespaces-only
 ```
 
-#### Esempio 5: Export Completo con Autenticazione e Profondità
+**Use Case:** Extract only namespace and server metadata nodes
+
+#### Example 5: Complete Export with Security
 
 ```bash
-python -m opc_browser.cli export -s opc.tcp://192.168.1.50:4840 \
-  -u admin -p admin123 -n "ns=2;i=5000" -d 10 \
-  -f csv -o export/produzione_completa.csv --include-values
+python -m opc_browser.cli export -s opc.tcp://192.168.1.50:4840 -u admin -p admin123 -n "ns=2;i=5000" -d 10 -f csv -o export/production_complete.csv --include-values
 ```
 
-#### Esempio 6: Export XML con Security
+**Features:**
+- Custom starting node
+- Maximum depth of 10 levels
+- Includes current variable values
+- CSV format for Excel analysis
+
+#### Example 6: Secure XML Export
 
 ```bash
-python -m opc_browser.cli export -s opc.tcp://secure.factory.com:4840 \
-  --security Basic256Sha256 --mode SignAndEncrypt \
-  --cert certificates/client_cert.pem --key certificates/client_key.pem \
-  -u operator -p op_pass -f xml -o secure_export.xml -d 7
+python -m opc_browser.cli export -s opc.tcp://secure.factory.com:4840 --security Basic256Sha256 --mode SignAndEncrypt --cert certificates/client_cert.pem --key certificates/client_key.pem -u operator -p op_pass -f xml -o secure_export.xml -d 7
 ```
 
 ---
 
-## 🔐 Comando: `generate-cert`
+## Generate Certificate Command
 
-Genera un certificato client self-signed per l'autenticazione OPC UA.
+Generate self-signed X.509 certificates for OPC UA client authentication.
 
-### Sintassi
+### Syntax
 
 ```bash
-python -m opc_browser.cli generate-cert [OPZIONI]
+python -m opc_browser.cli generate-cert [OPTIONS]
 ```
 
-### Argomenti
+### Certificate Arguments
 
-| Argomento         | Descrizione                                                                 | Default                                                   |
-|-------------------|-----------------------------------------------------------------------------|-----------------------------------------------------------|
-| `--dir`           | Directory dove salvare i certificati                                        | `certificates`                                            |
-| `--cn`            | Common Name del certificato                                                 | `OPC UA Python Client`                                    |
-| `--org`           | Organization Name                                                           | `My Organization`                                         |
-| `--country`       | Country code (2 lettere)                                                    | `IT`                                                      |
-| `--days`          | Validità del certificato in giorni                                          | `365`                                                     |
-| `--uri`           | Application URI (deve corrispondere a quello richiesto dal server OPC UA)   | `urn:example.org:FreeOpcUa:opcua-asyncio`                |
-| `--hostname`      | Hostname/DNS name da includere nel certificato (può essere ripetuto)        | `localhost` + hostname locale (auto-detected)             |
+| Argument | Description | Default |
+|----------|-------------|---------|
+| `--dir` | Certificate output directory | `certificates` |
+| `--cn`, `--common-name` | Certificate Common Name | `OPC UA Python Client` |
+| `--org`, `--organization` | Organization Name | `My Organization` |
+| `--country` | Country code (2 letters) | `IT` |
+| `--days` | Certificate validity in days | `365` |
+| `--uri`, `--application-uri` | OPC UA Application URI | `urn:example.org:FreeOpcUa:opcua-asyncio` |
+| `--hostname` | Hostname/DNS (can be repeated) | `localhost` + auto-detected hostname |
 
-**Note Importanti:**  
-- ✅ Tutti gli argomenti sono opzionali e hanno valori di default sensati
-- 🔄 `--hostname` viene popolato automaticamente con `localhost` e il nome del computer locale
-- 🔖 L'Application URI di default (`urn:example.org:FreeOpcUa:opcua-asyncio`) corrisponde a quello usato internamente da `asyncua`
-- 📌 Se il server richiede un URI diverso, usa `--uri` per personalizzarlo
-- 🏷️ Puoi specificare più volte `--hostname` per includere più DNS names/IP
+### Important Notes
 
-### Esempi
+✅ **All arguments are optional** with sensible defaults  
+🔄 **Auto-detection**: `--hostname` automatically includes `localhost` and local computer name  
+🔖 **Default URI**: Matches asyncua's internal Application URI  
+📌 **Custom URI**: Use `--uri` if server requires specific Application URI  
+🏷️ **Multiple Hostnames**: Use `--hostname` multiple times for multi-host certificates
+
+### Certificate Examples
+
+#### Example 1: Default Certificate Generation (Recommended)
 
 ```bash
-# Genera certificato con impostazioni di default (raccomandato)
 python -m opc_browser.cli generate-cert
-
-# Genera certificato con Application URI personalizzato
-python -m opc_browser.cli generate-cert --uri "urn:mycompany:opcua:client"
-
-# Genera certificato con hostname aggiuntivi
-python -m opc_browser.cli generate-cert \
-  --hostname server.local \
-  --hostname 192.168.1.100 \
-  --org "My Company" \
-  --days 730
-
-# Genera certificato per un ambiente specifico
-python -m opc_browser.cli generate-cert \
-  --uri "urn:factory:scada:client" \
-  --hostname production-server \
-  --hostname backup-server \
-  --cn "Factory SCADA Client" \
-  --org "ACME Corporation"
 ```
 
-### Output
+**Output:**
+- `certificates/client_cert.pem` - Client certificate (PEM format)
+- `certificates/client_key.pem` - Private key (PEM format)
+- `certificates/client_cert.der` - Certificate (DER format for some servers)
 
-- `client_cert.pem` - Certificato client
-- `client_key.pem`  - Chiave privata
-- `client_cert.der` - Certificato in formato DER (alcuni server lo richiedono)
+**Features:**
+- 2048-bit RSA key
+- 365-day validity
+- Default Application URI compatible with asyncua
+- Localhost + local hostname in SAN
 
-I file saranno salvati nella directory specificata (`--dir`).
-
-### Dove usare questi certificati?
-
-Utilizza i file generati con i parametri `--cert` e `--key` nei comandi `browse` ed `export`:
+#### Example 2: Custom Application URI
 
 ```bash
-python -m opc_browser.cli browse \
-  --server-url opc.tcp://server:4840 \
-  --security Basic256Sha256 \
-  --mode SignAndEncrypt \
-  --cert certificates/client_cert.pem \
-  --key certificates/client_key.pem
+python -m opc_browser.cli generate-cert --uri "urn:mycompany:opcua:client"
 ```
 
-## 📂 Struttura del Progetto
+**Use Case:** Server requires specific Application URI for client validation
+
+#### Example 3: Production Certificate
+
+```bash
+python -m opc_browser.cli generate-cert --uri "urn:factory:scada:client" --hostname production-server --hostname backup-server --hostname 192.168.1.100 --cn "Factory SCADA Client" --org "ACME Corporation" --country "US" --days 730
+```
+
+**Features:**
+- 2-year validity
+- Multiple hostnames for failover
+- Custom organization details
+- Production-grade configuration
+
+#### Example 4: Testing Environment
+
+```bash
+python -m opc_browser.cli generate-cert --dir test_certs --cn "Test Client" --days 30
+```
+
+**Best For:**
+- Short-lived test certificates
+- Isolated test directory
+- Development environments
+
+### Using Generated Certificates
+
+Apply certificates in browse/export commands:
+
+```bash
+python -m opc_browser.cli browse --server-url opc.tcp://server:4840 --security Basic256Sha256 --mode SignAndEncrypt --cert certificates/client_cert.pem --key certificates/client_key.pem
+```
+
+### Certificate Information
+
+Generated certificates include:
+- **Subject Alternative Names (SAN)**: Application URI, DNS names, IP addresses
+- **Key Usage**: Digital signature, key encipherment, data encipherment
+- **Extended Key Usage**: Client authentication, server authentication
+- **Formats**: PEM (for asyncua) and DER (for some servers)
+
+---
+
+## Project Structure
 
 ```
 opc-ua-browser/
-├── pyproject.toml          # Configurazione progetto
-├── requirements.txt        # Dipendenze Python
-├── SETUP.md               # Guida setup dettagliata
-├── README.md              # Questo file
-├── export/                # Directory export (auto-creata)
+├── pyproject.toml              # Project configuration
+├── requirements.txt            # Python dependencies
+├── SETUP.md                   # Detailed setup guide
+├── README.md                  # This file
+├── LICENSE                    # MIT License
+├── export/                    # Auto-created export directory
+│   └── opcua_export_*.{csv,json,xml}
+├── certificates/              # Generated certificates
+│   ├── client_cert.pem
+│   ├── client_key.pem
+│   └── client_cert.der
 └── src/
     └── opc_browser/
-        ├── __init__.py
-        ├── cli.py         # Entry point CLI (argparse)
-        ├── models.py      # Dataclasses per nodi OPC UA
-        ├── client.py      # Client OPC UA (connessione/autenticazione)
-        ├── browser.py     # Logica di browsing ricorsivo
-        ├── exporter.py    # Context per Strategy Pattern
-        ├── generate_cert.py  # Generazione certificati
+        ├── __init__.py        # Package initialization
+        ├── cli.py             # CLI entry point (argparse)
+        ├── models.py          # Data models (OpcUaNode, BrowseResult)
+        ├── client.py          # OPC UA client wrapper
+        ├── browser.py         # Recursive browsing logic
+        ├── exporter.py        # Export context (Strategy Pattern)
+        ├── generate_cert.py   # Certificate generation
         └── strategies/
             ├── __init__.py
-            ├── base.py    # ABC per Strategy
+            ├── base.py        # Abstract export strategy
             ├── csv_strategy.py
             ├── json_strategy.py
             └── xml_strategy.py
 ```
 
-## 🔧 Configurazione del Logging
+---
 
-Il logging è gestito automaticamente da `loguru`. I log includono:
+## Security
 
-- ✅ Tentativi di connessione
-- ✅ Successo/fallimento operazioni
-- ✅ Inizio/fine browsing
-- ✅ Inizio/fine export
-- ⚠️ Warning e errori
+### Certificate Management
 
-Per aumentare il livello di verbosity, modifica `src/opc_browser/cli.py`.
-
-## 🎯 Principi di Design
-
-### SOLID
-- **S**ingle Responsibility: ogni modulo ha una responsabilabilità chiara
-- **O**pen/Closed: Strategy Pattern per estendere formati di export
-- **L**iskov Substitution: le strategie sono intercambiabili
-- **I**nterface Segregation: interfacce minimali e specifiche
-- **D**ependency Inversion: dipendenze verso astrazioni
-
-### Design Patterns Implementati
-- **Strategy Pattern**: per export multi-formato (CSV/JSON/XML)
-- **Dataclass Pattern**: per modellazione dati type-safe
-
-## 🧪 Testing
+#### Automatic Generation (Recommended)
 
 ```bash
-# Installa dipendenze dev
-pip install -e ".[dev]"
-
-# Esegui test
-pytest tests/
-
-# Con coverage
-pytest --cov=opc_browser tests/
+python -m opc_browser.cli generate-cert
 ```
 
-## 🐛 Troubleshooting
+**Advantages:**
+- Works on Windows, Linux, macOS
+- No external tools required
+- Proper OPC UA extensions (Application URI in SAN)
+- Multiple output formats (PEM, DER)
 
-### Errore: "Cannot connect to server"
-
-- Verifica che il server OPC UA sia in esecuzione
-- Controlla l'URL del server (formato: `opc.tcp://host:port`)
-- Verifica firewall e porte
-
-### Errore: "Authentication failed"
-
-- Verifica username e password
-- Controlla la security policy richiesta dal server
-- Alcuni server richiedono certificati client
-
-### Errore: "Bad_NodeIdUnknown"
-
-- Il Node ID specificato non esiste
-- Verifica la sintassi del Node ID: `ns=X;i=Y` o `ns=X;s=StringId`
-- Usa `browse` per esplorare i nodi disponibili
-
-### Errore: "Invalid Node ID format"
-
-- **Formato corretto**: `i=123` (namespace 0), `ns=2;i=456` (con namespace), `ns=2;s=MyNode` (string ID)
-- **Formato errato**: `ns=2` (manca identificatore), `2;i=456` (manca prefisso ns)
-- Usa `browse` senza `-n` per esplorare l'albero e trovare ID validi
-
-### Warning: "No nodes discovered"
-
-- Il nodo specificato esiste ma non ha figli
-- Potresti non avere permessi per accedere ai suoi child nodes
-- Verifica con un livello di profondità maggiore (`-d 5` o più)
-- Prova a partire da un nodo parent (es. `i=85` per Objects)
-
-### Tree troppo grande da visualizzare
-
-- La visualizzazione è limitata a 500 nodi per performance
-- Usa il comando `export` per salvare l'intero albero su file
-- Riduci la profondità con `-d 2` o `-d 1` per browse più focalizzati
-
-### Errore: "Certificate and private key are required"
-
-- Quando usi `--security` con valore diverso da `None`, devi fornire:
-  - `--cert path/to/certificate.pem`
-  - `--key path/to/private_key.pem`
-  - `--mode Sign` o `--mode SignAndEncrypt`
-- Genera i certificati come descritto nella sezione "Gestione Certificati"
-
-### Errore: "Certificate file not found"
-
-- Verifica che il path del certificato sia corretto
-- Usa path assoluti o relativi dalla directory corrente
-- Controlla i permessi di lettura del file
-
-### Errore: "BadSecurityChecksFailed"
-
-- Il server ha rifiutato il certificato client
-- Verifica che il certificato sia trusted dal server
-- Alcuni server richiedono che il certificato sia aggiunto alla loro trust list
-- Controlla le politiche di sicurezza del server
-
-### Errore: "Security mode is required"
-
-- Quando usi `--security` (eccetto `None`), devi specificare `--mode`
-- Esempio corretto: `--security Basic256Sha256 --mode SignAndEncrypt`
-
-## 🔐 Gestione Certificati
-
-Per utilizzare le security policies (eccetto `None`), è necessario generare certificati client.
-
-### Generazione Certificati con Python (Raccomandato per Windows)
+#### Manual Generation with OpenSSL (Alternative)
 
 ```bash
-# Installa dipendenze (include cryptography)
-pip install -r requirements.txt
+# Create certificates directory
+mkdir certificates && cd certificates
 
-# Genera certificati automaticamente
-python generate_certificates.py
-
-# I certificati saranno salvati in: certificates/client_cert.pem e certificates/client_key.pem
-```
-
-### Generazione Certificati con OpenSSL (Linux/macOS)
-
-```bash
-# Crea directory per i certificati
-mkdir certificates
-cd certificates
-
-# Genera chiave privata
+# Generate private key (2048-bit RSA)
 openssl genrsa -out client_key.pem 2048
 
-# Genera certificato self-signed (valido 365 giorni)
+# Generate self-signed certificate (365-day validity)
 openssl req -new -x509 -key client_key.pem -out client_cert.pem -days 365
 
-# Informazioni da inserire (esempio):
-# Country Name: IT
-# State: Lazio
-# Locality: Rome
-# Organization Name: My Company
-# Organizational Unit: Engineering
-# Common Name: OPC UA Client
-# Email Address: client@example.com
+# Interactive prompts for certificate details:
+# - Country Name (2 letter code): US
+# - State or Province Name: California
+# - Locality Name: San Francisco
+# - Organization Name: My Company
+# - Organizational Unit Name: Engineering
+# - Common Name: OPC UA Client
+# - Email Address: client@example.com
 ```
 
-### Utilizzo Certificati
+#### Server Trust Configuration
 
+For servers requiring certificate trust:
+
+1. **Export client certificate** (already done if using generate-cert)
+2. **Add to server's trust list** (server-specific, consult documentation)
+3. **Restart server** (if required)
+4. **Test connection** with certificate
+
+---
+
+## Troubleshooting
+
+### Connection Errors
+
+#### ❌ "Cannot connect to server"
+
+**Possible Causes:**
+- Server is not running
+- Incorrect URL format
+- Firewall blocking connection
+- Wrong port number
+
+**Solutions:**
 ```bash
-python -m opc_browser.cli browse \
-  -s opc.tcp://server:4840 \
-  --security Basic256Sha256 \
-  --mode SignAndEncrypt \
-  --cert certificates/client_cert.pem \
-  --key certificates/client_key.pem
+# 1. Verify server is running
+# 2. Check URL format: opc.tcp://hostname:port
+# 3. Test network connectivity
+ping hostname
+
+# 4. Check firewall rules (common OPC UA ports: 4840, 48010)
+# 5. Try basic connection without security
+python -m opc_browser.cli browse -s opc.tcp://localhost:4840
 ```
 
-### Personalizzazione Certificati
+---
 
-Puoi modificare lo script `generate_certificates.py` per personalizzare:
-- Organization Name
-- Country Code
-- Common Name
-- Validity Period
-- Subject Alternative Names (DNS, IP)
+#### ❌ "Authentication failed"
 
-## 📚 Riferimenti
+**Error Hints:**
+- `BadIdentityTokenRejected`: Wrong username/password or user doesn't exist
+- `BadUserAccessDenied`: User exists but lacks permissions
 
-- [OPC UA Specification](https://opcfoundation.org/developer-tools/specifications-unified-architecture)
-- [asyncua Documentation](https://github.com/FreeOpcUa/opcua-asyncio)
-- [loguru Documentation](https://loguru.readthedocs.io/)
-- [tqdm Documentation](https://tqdm.github.io/)
+**Solutions:**
+```bash
+# 1. Verify credentials
+# 2. Check user exists on server
+# 3. Confirm user has required permissions
+# 4. Try without username/password if server allows anonymous
+python -m opc_browser.cli browse -s opc.tcp://server:4840
+```
 
-## 📄 Licenza
+---
 
-MIT License - Vedi file LICENSE per dettagli
+#### ❌ "BadSecurityChecksFailed"
 
-## 🤝 Contributi
+**Meaning:** Server rejected the client certificate
 
-I contributi sono benvenuti! Per favore:
-1. Forka il progetto
-2. Crea un branch per la tua feature (`git checkout -b feature/AmazingFeature`)
-3. Committa le modifiche (`git commit -m 'Add AmazingFeature'`)
-4. Pusha il branch (`git push origin feature/AmazingFeature`)
-5. Apri una Pull Request
+**Solutions:**
+1. **Generate compatible certificate:**
+   ```bash
+   python -m opc_browser.cli generate-cert --uri "urn:matching:server:uri"
+   ```
+
+2. **Add certificate to server trust list** (server-specific process)
+
+3. **Verify Application URI matches:**
+   ```bash
+   # Check server requirements for Application URI
+   # Generate certificate with matching URI
+   python -m opc_browser.cli generate-cert --uri "urn:server:required:uri"
+   ```
+
+4. **Check certificate validity:**
+   - Not expired
+   - Proper format (PEM vs DER)
+   - Correct file permissions
+
+---
+
+### Node ID Errors
+
+#### ❌ "BadNodeIdUnknown"
+
+**Meaning:** Specified node doesn't exist in server's address space
+
+**Solutions:**
+```bash
+# 1. Browse from root to find valid nodes
+python -m opc_browser.cli browse -s opc.tcp://server:4840 -d 2
+
+# 2. Look for NodeId hints in output:
+#    💡 NodeId: ns=2;i=1000
+
+# 3. Use discovered NodeId
+python -m opc_browser.cli browse -s opc.tcp://server:4840 -n "ns=2;i=1000"
+```
+
+---
+
+#### ❌ "Invalid Node ID format"
+
+**Valid Formats:**
+- `i=84` - Numeric in namespace 0
+- `ns=2;i=1000` - Numeric with namespace
+- `ns=2;s=MyNode` - String identifier
+- `ns=2;g=uuid` - GUID identifier
+- `ns=2;b=base64` - Opaque identifier
+
+**Common Mistakes:**
+```bash
+# ❌ Wrong: Missing identifier after ns=
+-n "ns=2"
+
+# ✅ Correct: Complete node ID
+-n "ns=2;i=1000"
+
+# ❌ Wrong: Missing ns= prefix for string IDs
+-n "s=MyNode"
+
+# ✅ Correct: String ID with namespace
+-n "ns=2;s=MyNode"
+```
+
+---
+
+### Security Errors
+
+#### ❌ "Certificate and private key are required"
+
+**Meaning:** Security policy requires certificates but none provided
+
+**Solution:**
+```bash
+# Generate certificates first
+python -m opc_browser.cli generate-cert
+
+# Then use in command
+python -m opc_browser.cli browse -s opc.tcp://server:4840 --security Basic256Sha256 --mode SignAndEncrypt --cert certificates/client_cert.pem --key certificates/client_key.pem
+```
+
+---
+
+## Contributing
+
+Contributions are welcome!  
+If you find a bug, want to suggest an enhancement, or wish to submit a pull request, please open an issue or PR on [GitHub](https://github.com/Mandarinetto10/opc_ua_exporter).  
+Before submitting code, ensure it follows the project's coding standards and includes appropriate tests and documentation.
+
+## References
+
+- [OPC UA Specification](https://reference.opcfoundation.org/)
+- [asyncua documentation](https://github.com/FreeOpcUa/opcua-asyncio)
+- [Python cryptography](https://cryptography.io/)
+- [OPC Foundation](https://opcfoundation.org/)
+- [loguru](https://github.com/Delgan/loguru)
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
