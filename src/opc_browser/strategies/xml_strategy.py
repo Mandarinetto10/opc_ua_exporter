@@ -2,6 +2,7 @@
 XML export strategy implementation.
 """
 
+from datetime import datetime
 from pathlib import Path
 from xml.etree.ElementTree import Element, SubElement, ElementTree, indent
 from loguru import logger
@@ -23,12 +24,25 @@ class XmlExportStrategy(ExportStrategy):
     
     async def export(self, result: BrowseResult, output_path: Path) -> None:
         """
-        Export nodes to XML file.
+        Export nodes to XML file with pretty formatting.
+        
+        Creates a well-structured XML document with:
+        - Metadata section with statistics
+        - Namespaces section with index and URI
+        - Nodes section with complete node information
+        - Proper indentation for readability
+        - ISO 8601 timestamp formatting
         
         Args:
             result: BrowseResult to export
             output_path: Path to output XML file
+            
+        Raises:
+            ValueError: If result is invalid or empty
+            IOError: If file cannot be written
         """
+        logger.debug(f"XML export started: {len(result.nodes)} nodes to {output_path}")
+        
         self.validate_result(result)
         self.ensure_output_directory(output_path)
         
@@ -36,6 +50,7 @@ class XmlExportStrategy(ExportStrategy):
         
         try:
             # Create root element
+            logger.debug("Building XML structure...")
             root = Element("OpcUaAddressSpace")
             
             # Add metadata section
@@ -43,8 +58,11 @@ class XmlExportStrategy(ExportStrategy):
             SubElement(metadata, "TotalNodes").text = str(result.total_nodes)
             SubElement(metadata, "MaxDepthReached").text = str(result.max_depth_reached)
             SubElement(metadata, "Success").text = str(result.success)
+            SubElement(metadata, "ExportTimestamp").text = datetime.now().isoformat()
             if result.error_message:
                 SubElement(metadata, "ErrorMessage").text = result.error_message
+            
+            logger.debug(f"Metadata created: {result.total_nodes} nodes, max depth {result.max_depth_reached}")
             
             # Add namespaces section
             namespaces = SubElement(root, "Namespaces")
@@ -53,12 +71,23 @@ class XmlExportStrategy(ExportStrategy):
                 SubElement(ns, "Index").text = str(idx)
                 SubElement(ns, "URI").text = uri
             
-            # Add nodes section
+            logger.debug(f"Namespaces section created: {len(result.namespaces)} namespaces")
+            
+            # Add nodes section with progress logging
             nodes = SubElement(root, "Nodes")
+            nodes_added = 0
             for node in result.nodes:
                 self._add_node_element(nodes, node)
+                nodes_added += 1
+                
+                # Progress logging for large exports
+                if nodes_added % 100 == 0:
+                    logger.debug(f"Progress: {nodes_added}/{len(result.nodes)} nodes added")
+            
+            logger.debug(f"All {nodes_added} nodes added to XML structure")
             
             # Create tree and write to file with indentation
+            logger.debug(f"Writing XML to file: {output_path}")
             tree = ElementTree(root)
             indent(tree, space="  ")  # Pretty print with 2-space indentation
             
@@ -68,15 +97,27 @@ class XmlExportStrategy(ExportStrategy):
                 xml_declaration=True,
             )
             
-            logger.success(f"XML export completed: {output_path}")
+            file_size = output_path.stat().st_size
+            logger.success(
+                f"✅ XML export completed successfully\n"
+                f"   File: {output_path.absolute()}\n"
+                f"   Size: {file_size / 1024:.2f} KB\n"
+                f"   Nodes: {result.total_nodes}\n"
+                f"   Format: UTF-8 with XML declaration, 2-space indentation"
+            )
             
+        except IOError as e:
+            error_msg = f"Failed to write XML file: {type(e).__name__}: {str(e)}"
+            logger.error(error_msg)
+            raise IOError(error_msg) from e
         except Exception as e:
-            logger.error(f"XML export failed: {e}")
+            error_msg = f"XML export failed: {type(e).__name__}: {str(e)}"
+            logger.error(error_msg)
             raise
     
     def _add_node_element(self, parent: Element, node: OpcUaNode) -> None:
         """
-        Add a node as XML element.
+        Add a node as XML element with all attributes.
         
         Args:
             parent: Parent XML element

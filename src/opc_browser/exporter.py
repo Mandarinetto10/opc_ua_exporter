@@ -18,6 +18,11 @@ from .strategies.json_strategy import JsonExportStrategy
 from .strategies.xml_strategy import XmlExportStrategy
 
 
+class ExporterError(Exception):
+    """Base exception for exporter errors."""
+    pass
+
+
 class Exporter:
     """
     Export context that delegates to format-specific strategies.
@@ -60,16 +65,25 @@ class Exporter:
         Raises:
             ValueError: If export_format is not supported
         """
+        export_format = export_format.lower()
+        
         if export_format not in self.STRATEGIES:
-            raise ValueError(
-                f"Unsupported format '{export_format}'. "
-                f"Supported: {', '.join(self.STRATEGIES.keys())}"
+            supported = ', '.join(self.STRATEGIES.keys())
+            error_msg = (
+                f"Unsupported export format '{export_format}'. "
+                f"Supported formats: {supported}"
             )
+            logger.error(error_msg)
+            raise ValueError(error_msg)
         
         self.export_format = export_format
         self.strategy = self.STRATEGIES[export_format]()
         
-        logger.debug(f"Exporter initialized for {export_format.upper()} format")
+        logger.debug(
+            f"Exporter initialized successfully\n"
+            f"   Format: {export_format.upper()}\n"
+            f"   Strategy: {self.strategy.__class__.__name__}"
+        )
     
     async def export(
         self,
@@ -80,10 +94,11 @@ class Exporter:
         Export browse result to file using selected strategy.
         
         This method:
-        1. Generates default output path if not provided
-        2. Ensures output directory exists
-        3. Delegates export to format-specific strategy
-        4. Returns the path to the created file
+        1. Validates the browse result
+        2. Generates default output path if not provided
+        3. Ensures output directory exists
+        4. Delegates export to format-specific strategy
+        5. Returns the path to the created file
         
         Args:
             result: BrowseResult containing nodes to export
@@ -95,20 +110,80 @@ class Exporter:
         Raises:
             ValueError: If result is invalid or empty
             IOError: If file cannot be written
+            ExporterError: If export operation fails
         """
+        logger.debug("=" * 80)
+        logger.debug("EXPORT OPERATION DETAILS")
+        logger.debug("=" * 80)
+        logger.debug(f"Format:       {self.export_format.upper()}")
+        logger.debug(f"Total Nodes:  {result.total_nodes}")
+        logger.debug(f"Max Depth:    {result.max_depth_reached}")
+        logger.debug(f"Namespaces:   {len(result.namespaces)}")
+        
+        # Validate result early
+        if not result.success:
+            error_msg = f"Cannot export failed browse result: {result.error_message}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        
+        if not result.nodes:
+            error_msg = "Cannot export empty result - no nodes discovered"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        
         # Generate default output path if not provided
         if output_path is None:
             output_path = self._generate_default_path()
+            logger.debug(f"Auto-generated output path: {output_path}")
+        else:
+            logger.debug(f"Using custom output path: {output_path}")
         
         # Ensure parent directory exists
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            logger.debug(f"Output directory ready: {output_path.parent.absolute()}")
+        except Exception as e:
+            error_msg = f"Failed to create output directory: {type(e).__name__}: {str(e)}"
+            logger.error(error_msg)
+            raise IOError(error_msg) from e
         
-        logger.debug(f"Starting {self.export_format.upper()} export to {output_path}")
+        logger.info(
+            f"Starting {self.export_format.upper()} export\n"
+            f"   Nodes to export: {result.total_nodes}\n"
+            f"   Output file: {output_path.absolute()}"
+        )
         
         # Delegate to strategy
-        await self.strategy.export(result, output_path)
-        
-        return output_path
+        try:
+            await self.strategy.export(result, output_path)
+            
+            # Verify file was created
+            if not output_path.exists():
+                error_msg = f"Export completed but output file not found: {output_path}"
+                logger.error(error_msg)
+                raise ExporterError(error_msg)
+            
+            file_size = output_path.stat().st_size
+            logger.debug("=" * 80)
+            logger.debug("EXPORT COMPLETED SUCCESSFULLY")
+            logger.debug("=" * 80)
+            logger.debug(f"File Path:    {output_path.absolute()}")
+            logger.debug(f"File Size:    {file_size:,} bytes ({file_size / 1024:.2f} KB)")
+            logger.debug(f"Nodes Exported: {result.total_nodes}")
+            logger.debug("=" * 80)
+            
+            return output_path.absolute()
+            
+        except ValueError as e:
+            # Already logged by strategy
+            raise
+        except IOError as e:
+            # Already logged by strategy
+            raise
+        except Exception as e:
+            error_msg = f"Export operation failed: {type(e).__name__}: {str(e)}"
+            logger.error(error_msg)
+            raise ExporterError(error_msg) from e
     
     def _generate_default_path(self) -> Path:
         """
@@ -122,7 +197,11 @@ class Exporter:
         """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"opcua_export_{timestamp}.{self.export_format}"
-        return Path("export") / filename
+        default_path = Path("export") / filename
+        
+        logger.debug(f"Generated default filename: {filename}")
+        
+        return default_path
     
     @classmethod
     def get_supported_formats(cls) -> list[str]:

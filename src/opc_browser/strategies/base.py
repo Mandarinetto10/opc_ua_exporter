@@ -5,6 +5,7 @@ Implements Strategy Pattern following Open/Closed Principle (OCP).
 
 from abc import ABC, abstractmethod
 from pathlib import Path
+from loguru import logger
 from ..models import BrowseResult
 
 
@@ -51,10 +52,19 @@ class ExportStrategy(ABC):
             ValueError: If result is invalid
         """
         if not result.success:
-            raise ValueError(f"Browse failed: {result.error_message}")
+            error_msg = f"Browse operation failed: {result.error_message}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
         
         if not result.nodes:
-            raise ValueError("No nodes to export")
+            error_msg = "No nodes to export - browse result is empty"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        
+        logger.debug(
+            f"✅ Validation passed: {len(result.nodes)} nodes ready for export, "
+            f"max depth {result.max_depth_reached}, {len(result.namespaces)} namespaces"
+        )
     
     def ensure_output_directory(self, output_path: Path) -> None:
         """
@@ -62,5 +72,14 @@ class ExportStrategy(ABC):
         
         Args:
             output_path: Path to the output file
+            
+        Raises:
+            IOError: If directory cannot be created
         """
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            logger.debug(f"✅ Output directory ensured: {output_path.parent.absolute()}")
+        except Exception as e:
+            error_msg = f"Failed to create output directory: {type(e).__name__}: {str(e)}"
+            logger.error(error_msg)
+            raise IOError(error_msg) from e

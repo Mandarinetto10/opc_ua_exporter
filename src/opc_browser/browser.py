@@ -1,23 +1,25 @@
-"""
-OPC UA Address Space browser with recursive navigation.
+"""OPC UA Address Space browser with recursive navigation.
 
 This module provides functionality to recursively browse and explore OPC UA
 address spaces, extracting node information at configurable depths with
 support for value reading and namespace filtering.
 """
 
+from __future__ import annotations
+
+import re
 from typing import Optional
+
 from asyncua import Client, ua
-from asyncua.ua import NodeClass, ObjectIds, VariantType
 from asyncua.common.node import Node
+from asyncua.ua import NodeClass, ObjectIds, VariantType
 from loguru import logger
 
-from .models import OpcUaNode, BrowseResult
+from .models import BrowseResult, OpcUaNode
 
 
 class OpcUaBrowser:
-    """
-    Handles recursive browsing of OPC UA Address Space.
+    """Handles recursive browsing of OPC UA Address Space.
     
     This class implements a depth-limited recursive algorithm to discover
     and catalog all nodes in an OPC UA server's address space. It uses
@@ -31,20 +33,29 @@ class OpcUaBrowser:
     - Type-safe data extraction using asyncua enums
     
     Attributes:
-        client: Connected asyncua Client instance
-        max_depth: Maximum recursion depth for browsing
-        include_values: Whether to read current values from Variable nodes
-        namespaces_only: Filter to show only namespace-related nodes
+        client: Connected asyncua Client instance.
+        max_depth: Maximum recursion depth for browsing.
+        include_values: Whether to read current values from Variable nodes.
+        namespaces_only: Filter to show only namespace-related nodes.
         
-    Example:
-        >>> async with OpcUaClient("opc.tcp://localhost:4840") as client:
-        ...     browser = OpcUaBrowser(client.get_client(), max_depth=5)
-        ...     result = await browser.browse()
-        ...     browser.print_tree(result)
+    Examples:
+        Basic browse:
+            >>> async with OpcUaClient("opc.tcp://localhost:4840") as client:
+            ...     browser = OpcUaBrowser(client.get_client(), max_depth=5)
+            ...     result = await browser.browse()
+            ...     browser.print_tree(result)
+            
+        Browse with value reading:
+            >>> browser = OpcUaBrowser(
+            ...     client.get_client(),
+            ...     max_depth=3,
+            ...     include_values=True
+            ... )
+            >>> result = await browser.browse(start_node_id="ns=2;i=1000")
     """
     
-    # Map asyncua NodeClass enum to friendly names
-    NODE_CLASS_NAMES = {
+    # Map asyncua NodeClass enum to human-readable names
+    NODE_CLASS_NAMES: dict[NodeClass, str] = {
         NodeClass.Object: "Object",
         NodeClass.Variable: "Variable",
         NodeClass.Method: "Method",
@@ -55,8 +66,8 @@ class OpcUaBrowser:
         NodeClass.View: "View",
     }
     
-    # Map asyncua VariantType to readable names
-    DATA_TYPE_NAMES = {
+    # Map asyncua VariantType enum to human-readable names
+    DATA_TYPE_NAMES: dict[VariantType, str] = {
         VariantType.Boolean: "Boolean",
         VariantType.SByte: "SByte",
         VariantType.Byte: "Byte",
@@ -80,71 +91,125 @@ class OpcUaBrowser:
         VariantType.LocalizedText: "LocalizedText",
     }
     
+    # Node ID validation patterns (OPC UA specification compliant)
+    NODE_ID_PATTERNS: list[re.Pattern] = [
+        re.compile(r"^i=\d+$"),  # Numeric: i=123
+        re.compile(r"^ns=\d+;i=\d+$"),  # Numeric with namespace: ns=2;i=456
+        re.compile(r"^ns=\d+;s=.+$"),  # String: ns=2;s=StringId
+        re.compile(r"^ns=\d+;g=[0-9a-fA-F-]+$"),  # GUID: ns=2;g=UUID
+        re.compile(r"^ns=\d+;b=.+$"),  # ByteString: ns=2;b=Base64
+    ]
+    
+    # Namespace-related keywords for filtering
+    NAMESPACE_KEYWORDS: list[str] = [
+        "Namespace",
+        "NamespaceArray",
+        "Server",
+        "ServerArray",
+        "ServerCapabilities",
+        "ServerDiagnostics",
+    ]
+    
+    # OPC UA standard namespace-related ObjectIds
+    NAMESPACE_OBJECT_IDS: list[int] = [
+        ObjectIds.Server,
+        ObjectIds.Server_NamespaceArray,
+        ObjectIds.Server_ServerArray,
+        ObjectIds.Server_ServerCapabilities,
+        ObjectIds.Server_ServerDiagnostics,
+    ]
+    
     def __init__(
         self,
         client: Client,
         max_depth: int = 3,
         include_values: bool = False,
         namespaces_only: bool = False,
+        namespace_filter: Optional[int] = None,
     ) -> None:
-        """
-        Initialize browser.
+        """Initialize OPC UA browser with configuration.
         
         Args:
-            client: Connected OPC UA client
-            max_depth: Maximum depth for recursive browsing
-            include_values: Whether to read variable values
-            namespaces_only: Whether to filter only namespace-related nodes
+            client: Connected asyncua Client instance.
+            max_depth: Maximum depth for recursive browsing (default: 3).
+            include_values: Whether to read variable values (default: False).
+            namespaces_only: Whether to filter only namespace-related nodes (default: False).
+            namespace_filter: Filter nodes by namespace index (e.g., 2).
         """
-        self.client = client
-        self.max_depth = max_depth
-        self.include_values = include_values
-        self.namespaces_only = namespaces_only
+        self.client: Client = client
+        self.max_depth: int = max_depth
+        self.include_values: bool = include_values
+        self.namespaces_only: bool = namespaces_only
+        self.namespace_filter: Optional[int] = namespace_filter
         
         logger.info(
             f"Browser initialized (max_depth={max_depth}, "
-            f"include_values={include_values}, namespaces_only={namespaces_only})"
+            f"include_values={include_values}, namespaces_only={namespaces_only}, "
+            f"namespace_filter={namespace_filter})"
         )
     
     async def browse(self, start_node_id: str = "i=84") -> BrowseResult:
-        """
-        Browse the Address Space starting from a specific node.
+        """Browse the OPC UA Address Space starting from a specific node.
+        
+        Performs recursive navigation of the address space, collecting node
+        information, namespaces, and optional values. Validates node ID format
+        before starting and provides detailed error messages for failures.
         
         Args:
-            start_node_id: Node ID to start browsing from (default: RootFolder i=84)
+            start_node_id: Node ID to start browsing from. Default is "i=84"
+                (RootFolder). Format: "i=123", "ns=2;i=456", or "ns=2;s=MyNode".
             
         Returns:
-            BrowseResult containing all discovered nodes
+            BrowseResult containing all discovered nodes, namespaces, statistics,
+            and success/error status.
+            
+        Examples:
+            >>> result = await browser.browse()  # From RootFolder
+            >>> result = await browser.browse("ns=2;i=1000")  # Custom start
         """
-        result = BrowseResult()
+        result: BrowseResult = BrowseResult()
         
         try:
             logger.info(f"Starting browse from node: {start_node_id}")
             
-            # Validate Node ID format
             if not self._validate_node_id(start_node_id):
-                error_msg = f"Invalid Node ID format: {start_node_id}. Expected format: 'i=123', 'ns=2;i=456', or 'ns=2;s=StringId'"
+                error_msg: str = self._get_node_id_validation_error(start_node_id)
                 logger.error(error_msg)
                 result.success = False
                 result.error_message = error_msg
                 return result
             
-            # Get namespaces
             result.namespaces = await self._get_namespaces()
             logger.info(f"Found {len(result.namespaces)} namespaces")
             
-            # Get starting node using asyncua native method
+            # Log namespace URIs for user reference
+            for idx, uri in result.namespaces.items():
+                logger.debug(f"  Namespace[{idx}]: {uri}")
+            
+            # Validate namespace_filter if provided
+            if self.namespace_filter is not None:
+                if self.namespace_filter not in result.namespaces:
+                    error_msg = (
+                        f"Namespace index {self.namespace_filter} not found. "
+                        f"Available: {list(result.namespaces.keys())}"
+                    )
+                    logger.error(error_msg)
+                    result.success = False
+                    result.error_message = error_msg
+                    return result
+                logger.info(
+                    f"Filtering nodes by namespace[{self.namespace_filter}]: "
+                    f"{result.namespaces[self.namespace_filter]}"
+                )
+            
+            # Get and validate starting node
             try:
-                start_node = self.client.get_node(start_node_id)
-                # Verify node exists by trying to read its class
-                await start_node.read_node_class()
+                start_node: Node = self.client.get_node(start_node_id)
+                await start_node.read_node_class()  # Verify node exists
             except ua.UaStatusCodeError as e:
-                # Safely extract error code
-                try:
-                    error_code = e.code.name if hasattr(e.code, 'name') else f"Status code: {e.code}"
-                except Exception:
-                    error_code = "Unknown error"
-                    
+                error_code: str = (
+                    e.code.name if hasattr(e.code, "name") else f"Status code: {e.code}"
+                )
                 error_msg = f"Node '{start_node_id}' not found or not accessible: {error_code}"
                 logger.error(error_msg)
                 result.success = False
@@ -157,7 +222,6 @@ class OpcUaBrowser:
                 result.error_message = error_msg
                 return result
             
-            # Start recursive browse
             await self._browse_recursive(
                 node=start_node,
                 parent_id=None,
@@ -165,12 +229,39 @@ class OpcUaBrowser:
                 result=result,
             )
             
-            # Warning if no nodes found
+            # Apply namespace filtering if configured
+            if self.namespaces_only:
+                original_count = result.total_nodes
+                result.nodes = [node for node in result.nodes if node.is_namespace_node]
+                result.total_nodes = len(result.nodes)
+                logger.info(
+                    f"Namespace filter applied: {result.total_nodes} namespace nodes "
+                    f"out of {original_count} total nodes"
+                )
+            elif self.namespace_filter is not None:
+                original_count = result.total_nodes
+                result.nodes = [
+                    node for node in result.nodes 
+                    if node.namespace_index == self.namespace_filter
+                ]
+                result.total_nodes = len(result.nodes)
+                logger.info(
+                    f"Namespace index filter applied: {result.total_nodes} nodes "
+                    f"from namespace[{self.namespace_filter}] out of {original_count} total nodes"
+                )
+            
             if result.total_nodes == 0:
-                logger.warning(f"No nodes discovered from '{start_node_id}'. The node may have no children or access is restricted.")
+                logger.warning(
+                    f"No nodes discovered from '{start_node_id}'. "
+                    f"The node may have no children or access is restricted."
+                )
+            else:
+                # Compute full OPC UA paths for all nodes
+                logger.info("Computing full OPC UA paths...")
+                result.compute_full_paths()
             
             logger.success(
-                f"Browse completed: {result.total_nodes} nodes discovered "
+                f"✅ Browse completed: {result.total_nodes} nodes discovered "
                 f"(max depth: {result.max_depth_reached})"
             )
             
@@ -189,64 +280,54 @@ class OpcUaBrowser:
         depth: int,
         result: BrowseResult,
     ) -> None:
-        """
-        Recursively browse nodes up to max_depth.
+        """Recursively browse nodes up to configured maximum depth.
+        
+        Extracts complete node information including ID, names, class, type,
+        and optional values. Applies namespace filtering if configured.
         
         Args:
-            node: Current node to browse
-            parent_id: Parent node ID
-            depth: Current depth level
-            result: BrowseResult to accumulate nodes
+            node: Current asyncua Node instance to browse.
+            parent_id: Node ID of the parent node (None for root).
+            depth: Current recursion depth level.
+            result: BrowseResult accumulator for discovered nodes.
         """
-        # Check depth limit
         if depth > self.max_depth:
             return
         
         try:
-            # Get node information using asyncua native methods
-            node_id = node.nodeid.to_string()
-            browse_name_obj = await node.read_browse_name()
-            browse_name = browse_name_obj.Name
-            display_name_obj = await node.read_display_name()
-            display_name = display_name_obj.Text
-            node_class = await node.read_node_class()
+            node_id: str = node.nodeid.to_string()
+            browse_name_obj: ua.QualifiedName = await node.read_browse_name()
+            browse_name: str = browse_name_obj.Name
+            display_name_obj: ua.LocalizedText = await node.read_display_name()
+            display_name: str = display_name_obj.Text
+            node_class: NodeClass = await node.read_node_class()
+            namespace_index: int = node.nodeid.NamespaceIndex
             
-            # Get namespace index from NodeId object
-            namespace_index = node.nodeid.NamespaceIndex
+            is_namespace_node: bool = await self._is_namespace_node(node, browse_name)            
             
-            # Check if this is a namespace-related node
-            is_namespace_node = await self._is_namespace_node(node, browse_name)
-            
-            # Skip if namespaces_only filter is active and node is not namespace-related
-            if self.namespaces_only and not is_namespace_node:
-                return
-            
-            # Get data type and value for Variable nodes
-            data_type = None
-            value = None
-            data_type_name = None
+            data_type: Optional[str] = None
+            value: Optional[any] = None
+            data_type_name: Optional[str] = None
             
             if node_class == NodeClass.Variable:
                 try:
-                    # Get data type using asyncua native method
-                    data_type_node = await node.read_data_type()
+                    data_type_node: ua.NodeId = await node.read_data_type()
                     data_type = data_type_node.to_string()
                     
-                    # Try to get variant type for better type name
+                    # Attempt to get variant type for better type name
                     try:
-                        variant = await node.read_data_value()
-                        if variant.Value and hasattr(variant.Value, 'VariantType'):
-                            variant_type = variant.Value.VariantType
+                        variant: ua.DataValue = await node.read_data_value()
+                        if variant.Value and hasattr(variant.Value, "VariantType"):
+                            variant_type: VariantType = variant.Value.VariantType
                             data_type_name = self.DATA_TYPE_NAMES.get(
                                 variant_type,
-                                self._parse_data_type_id(data_type)
+                                self._parse_data_type_id(data_type),
                             )
                         else:
                             data_type_name = self._parse_data_type_id(data_type)
-                    except:
+                    except Exception:
                         data_type_name = self._parse_data_type_id(data_type)
                     
-                    # Read value if requested
                     if self.include_values:
                         value_variant = await node.read_value()
                         value = value_variant
@@ -254,8 +335,7 @@ class OpcUaBrowser:
                 except Exception as e:
                     logger.debug(f"Could not read variable data for {node_id}: {e}")
             
-            # Create OpcUaNode object with friendly node class name
-            opc_node = OpcUaNode(
+            opc_node: OpcUaNode = OpcUaNode(
                 node_id=node_id,
                 browse_name=browse_name,
                 display_name=display_name,
@@ -268,17 +348,15 @@ class OpcUaBrowser:
                 is_namespace_node=is_namespace_node,
             )
             
-            # Add to result
             result.add_node(opc_node)
             
-            # Log progress every 10 nodes at depth 0
+            # Progress logging for large address spaces
             if depth == 0 and result.total_nodes % 10 == 0:
                 logger.info(f"Discovered {result.total_nodes} nodes so far...")
             
-            # Browse children if not at max depth
             if depth < self.max_depth:
                 try:
-                    children = await node.get_children()
+                    children: list[Node] = await node.get_children()
                     
                     for child in children:
                         await self._browse_recursive(
@@ -295,156 +373,168 @@ class OpcUaBrowser:
             logger.debug(f"Error browsing node at depth {depth}: {e}")
     
     def _parse_data_type_id(self, data_type: str) -> str:
-        """
-        Parse data type ID to human-readable name using asyncua constants.
+        """Parse OPC UA data type Node ID to human-readable name.
+        
+        Maps standard OPC UA data type IDs to their canonical names using
+        asyncua's ObjectIds constants for accuracy.
         
         Args:
-            data_type: Data type node ID string
+            data_type: Data type node ID string (e.g., "i=12" for String).
             
         Returns:
-            Human-readable data type name
+            Human-readable data type name or simplified type ID.
+            
+        Examples:
+            >>> self._parse_data_type_id("i=12")
+            "String"
+            >>> self._parse_data_type_id("i=11")
+            "Double"
         """
-        # Map common OPC UA data type IDs to names
-        # Using asyncua ObjectIds where possible
-        type_map = {
-            f"i={ua.ObjectIds.Boolean}": "Boolean",
-            f"i={ua.ObjectIds.SByte}": "SByte",
-            f"i={ua.ObjectIds.Byte}": "Byte",
-            f"i={ua.ObjectIds.Int16}": "Int16",
-            f"i={ua.ObjectIds.UInt16}": "UInt16",
-            f"i={ua.ObjectIds.Int32}": "Int32",
-            f"i={ua.ObjectIds.UInt32}": "UInt32",
-            f"i={ua.ObjectIds.Int64}": "Int64",
-            f"i={ua.ObjectIds.UInt64}": "UInt64",
-            f"i={ua.ObjectIds.Float}": "Float",
-            f"i={ua.ObjectIds.Double}": "Double",
-            f"i={ua.ObjectIds.String}": "String",
-            f"i={ua.ObjectIds.DateTime}": "DateTime",
-            f"i={ua.ObjectIds.Guid}": "Guid",
-            f"i={ua.ObjectIds.ByteString}": "ByteString",
-            f"i={ua.ObjectIds.XmlElement}": "XmlElement",
-            f"i={ua.ObjectIds.NodeId}": "NodeId",
-            f"i={ua.ObjectIds.ExpandedNodeId}": "ExpandedNodeId",
-            f"i={ua.ObjectIds.StatusCode}": "StatusCode",
-            f"i={ua.ObjectIds.QualifiedName}": "QualifiedName",
-            f"i={ua.ObjectIds.LocalizedText}": "LocalizedText",
+        type_map: dict[str, str] = {
+            f"i={ObjectIds.Boolean}": "Boolean",
+            f"i={ObjectIds.SByte}": "SByte",
+            f"i={ObjectIds.Byte}": "Byte",
+            f"i={ObjectIds.Int16}": "Int16",
+            f"i={ObjectIds.UInt16}": "UInt16",
+            f"i={ObjectIds.Int32}": "Int32",
+            f"i={ObjectIds.UInt32}": "UInt32",
+            f"i={ObjectIds.Int64}": "Int64",
+            f"i={ObjectIds.UInt64}": "UInt64",
+            f"i={ObjectIds.Float}": "Float",
+            f"i={ObjectIds.Double}": "Double",
+            f"i={ObjectIds.String}": "String",
+            f"i={ObjectIds.DateTime}": "DateTime",
+            f"i={ObjectIds.Guid}": "Guid",
+            f"i={ObjectIds.ByteString}": "ByteString",
+            f"i={ObjectIds.XmlElement}": "XmlElement",
+            f"i={ObjectIds.NodeId}": "NodeId",
+            f"i={ObjectIds.ExpandedNodeId}": "ExpandedNodeId",
+            f"i={ObjectIds.StatusCode}": "StatusCode",
+            f"i={ObjectIds.QualifiedName}": "QualifiedName",
+            f"i={ObjectIds.LocalizedText}": "LocalizedText",
         }
         
         return type_map.get(data_type, data_type.replace("i=", "Type"))
     
     async def _get_namespaces(self) -> dict[int, str]:
-        """
-        Get namespace array from server using asyncua native method.
+        """Retrieve namespace array from OPC UA server.
+        
+        Uses asyncua's native method to fetch the complete namespace array,
+        which maps namespace indices to their URIs.
         
         Returns:
-            Dictionary mapping namespace index to URI
+            Dictionary mapping namespace index (int) to namespace URI (str).
+            Empty dict if retrieval fails.
+            
+        Examples:
+            >>> namespaces = await self._get_namespaces()
+            {0: 'http://opcfoundation.org/UA/', 1: 'urn:MyServer', ...}
         """
         try:
-            # Use asyncua native method to get namespace array
-            namespace_array = await self.client.get_namespace_array()
+            namespace_array: list[str] = await self.client.get_namespace_array()
             return {idx: uri for idx, uri in enumerate(namespace_array)}
         except Exception as e:
             logger.warning(f"Could not retrieve namespaces: {e}")
             return {}
     
     async def _is_namespace_node(self, node: Node, browse_name: str) -> bool:
-        """
-        Check if node is namespace-related using asyncua ObjectIds.
+        """Check if node is namespace-related using OPC UA standards.
+        
+        Identifies namespace nodes by checking browse name keywords and
+        comparing node IDs against standard OPC UA ObjectIds.
         
         Args:
-            node: Node to check
-            browse_name: Browse name of the node
+            node: asyncua Node instance to check.
+            browse_name: Browse name of the node.
             
         Returns:
-            True if node is namespace-related
+            True if node is namespace-related, False otherwise.
         """
-        # Check for common namespace-related names
-        namespace_keywords = [
-            "Namespace",
-            "NamespaceArray",
-            "Server",
-            "ServerArray",
-            "ServerCapabilities",
-            "ServerDiagnostics",
-        ]
-        
-        # Check browse name
-        if any(keyword in browse_name for keyword in namespace_keywords):
+        if any(keyword in browse_name for keyword in self.NAMESPACE_KEYWORDS):
             return True
         
-        # Check node ID using asyncua ObjectIds constants
-        node_id_int = None
-        if node.nodeid.NamespaceIndex == 0 and hasattr(node.nodeid, 'Identifier'):
+        node_id_int: Optional[int] = None
+        if node.nodeid.NamespaceIndex == 0 and hasattr(node.nodeid, "Identifier"):
             node_id_int = node.nodeid.Identifier
         
-        # List of standard namespace-related ObjectIds
-        namespace_object_ids = [
-            ua.ObjectIds.Server,
-            ua.ObjectIds.Server_NamespaceArray,
-            ua.ObjectIds.Server_ServerArray,
-            ua.ObjectIds.Server_ServerCapabilities,
-            ua.ObjectIds.Server_ServerDiagnostics,
-        ]
-        
-        return node_id_int in namespace_object_ids if node_id_int else False
+        return node_id_int in self.NAMESPACE_OBJECT_IDS if node_id_int else False
     
     def _validate_node_id(self, node_id: str) -> bool:
-        """
-        Validate Node ID format.
+        """Validate Node ID format against OPC UA specification.
+        
+        Checks if the node ID string matches one of the standard OPC UA
+        formats: numeric, string, GUID, or opaque (ByteString).
         
         Args:
-            node_id: Node ID string to validate
+            node_id: Node ID string to validate.
             
         Returns:
-            True if valid, False otherwise
+            True if format is valid, False otherwise.
+            
+        Valid Formats:
+            - i=123 (numeric in namespace 0)
+            - ns=2;i=456 (numeric with namespace)
+            - ns=2;s=StringId (string with namespace)
+            - ns=2;g=UUID (GUID with namespace)
+            - ns=2;b=Base64 (byte string with namespace)
         """
-        # Valid formats:
-        # - i=123 (numeric in namespace 0)
-        # - ns=2;i=456 (numeric with namespace)
-        # - ns=2;s=StringId (string with namespace)
-        # - ns=2;g=GUID (GUID with namespace)
-        # - ns=2;b=ByteString (byte string with namespace)
+        return any(pattern.match(node_id) for pattern in self.NODE_ID_PATTERNS)
+    
+    def _get_node_id_validation_error(self, node_id: str) -> str:
+        """Generate detailed validation error message with examples.
         
-        import re
+        Args:
+            node_id: Invalid node ID string.
+            
+        Returns:
+            Detailed error message with valid format examples.
+        """
+        error_msg = f"Invalid Node ID format: '{node_id}'\n\n"
+        error_msg += "Valid formats:\n"
+        error_msg += "  • Numeric (ns=0):        i=84\n"
+        error_msg += "  • Numeric with ns:       ns=2;i=1000\n"
+        error_msg += "  • String with ns:        ns=2;s=Studio\n"
+        error_msg += "  • GUID with ns:          ns=2;g=09087e75-8e5e-499b-954f-f2a9603db28a\n"
+        error_msg += "  • ByteString with ns:    ns=2;b=YWJjZGVm\n\n"
         
-        patterns = [
-            r'^i=\d+$',  # i=123
-            r'^ns=\d+;i=\d+$',  # ns=2;i=456
-            r'^ns=\d+;s=.+$',  # ns=2;s=StringId
-            r'^ns=\d+;g=[0-9a-fA-F-]+$',  # ns=2;g=GUID
-            r'^ns=\d+;b=.+$',  # ns=2;b=ByteString
-        ]
+        # Try to provide helpful hints
+        if "=" not in node_id:
+            error_msg += "Hint: Node ID must contain '=' (e.g., 'i=84' or 'ns=2;s=Studio')\n"
+        elif node_id.startswith("s="):
+            error_msg += f"Hint: Did you mean 'ns=2;s={node_id[2:]}'? String IDs require namespace prefix.\n"
+        elif node_id.startswith("ns=") and ";" not in node_id:
+            error_msg += "Hint: After 'ns=X' you need ';i=', ';s=', ';g=', or ';b=' followed by the identifier.\n"
         
-        return any(re.match(pattern, node_id) for pattern in patterns)
+        return error_msg
     
     def print_tree(self, result: BrowseResult) -> None:
-        """
-        Print browse result as a formatted tree structure to console.
+        """Print browse result as formatted tree structure to console.
         
-        This method generates a visual tree representation of the browsed
-        address space with:
+        Generates a visual tree representation of the browsed address space with:
         - Hierarchical indentation showing parent-child relationships
         - Emoji icons indicating node types
         - Summary statistics (total nodes, depth, namespaces)
         - Type information for variables
         - Namespace indicators
-        - Node ID references for root nodes
+        - Node ID references for root and depth-1 nodes
         
         The output is limited to 500 nodes for performance. Use the export
-        command for complete data extraction.
+        command for complete data extraction of large address spaces.
         
         Args:
-            result: BrowseResult containing discovered nodes and metadata
+            result: BrowseResult containing discovered nodes and metadata.
             
         Output Format:
             - Header with summary statistics
+            - Node type distribution
             - Namespace list with node counts
             - Tree structure with visual connectors
+            - NodeID hints for navigable nodes
             - Truncation warning if needed
             
         Note:
-            Only prints if result.success is True. Failed browse operations
-            only show an error message.
+            Only prints tree if result.success is True. Failed browse operations
+            display only an error message.
         """
         print("\n" + "=" * 100)
         print("OPC UA ADDRESS SPACE TREE")
@@ -462,105 +552,100 @@ class OpcUaBrowser:
             print("=" * 100 + "\n")
             return
         
-        # Print server summary
         print(f"\n📊 SUMMARY:")
         print(f"   • Total Nodes: {result.total_nodes}")
         print(f"   • Max Depth: {result.max_depth_reached}")
         print(f"   • Namespaces: {len(result.namespaces)}")
         
-        # Count node types
-        node_types = {}
+        # Count and display node type distribution
+        node_types: dict[str, int] = {}
         for node in result.nodes:
             node_types[node.node_class] = node_types.get(node.node_class, 0) + 1
         
         print(f"\n📈 NODE TYPES:")
+        icon_map: dict[str, str] = {
+            "Object": "📁",
+            "Variable": "📊",
+            "Method": "⚙️",
+            "ObjectType": "📦",
+            "VariableType": "📈",
+            "DataType": "🔢",
+            "ReferenceType": "🔗",
+            "View": "👁️",
+        }
         for node_type, count in sorted(node_types.items()):
-            icon = {
-                "Object": "📁", "Variable": "📊", "Method": "⚙️",
-                "ObjectType": "📦", "VariableType": "📈", "DataType": "🔢",
-                "ReferenceType": "🔗", "View": "👁️"
-            }.get(node_type, "📄")
+            icon: str = icon_map.get(node_type, "📄")
             print(f"   {icon} {node_type}: {count}")
         
-        # Print namespaces with details
         if result.namespaces:
             print(f"\n🌐 NAMESPACES:")
             for idx, uri in result.namespaces.items():
-                # Count nodes in this namespace
-                ns_count = sum(1 for n in result.nodes if n.namespace_index == idx)
+                ns_count: int = sum(1 for n in result.nodes if n.namespace_index == idx)
                 print(f"   [{idx}] {uri}")
                 if ns_count > 0:
                     print(f"       └─ {ns_count} nodes")
         
-        # Print node tree with better formatting
         print(f"\n🌳 NODE TREE:")
         print("-" * 100)
         
-        # Optionally limit display for very large trees
-        max_display = 500
-        display_nodes = result.nodes[:max_display]
+        # Limit display for very large trees to prevent performance issues
+        max_display: int = 500
+        display_nodes: list[OpcUaNode] = result.nodes[:max_display]
+        
+        # Common data type ID to name mapping for display
+        type_names: dict[str, str] = {
+            "i=1": "Boolean",
+            "i=3": "Byte",
+            "i=6": "Int32",
+            "i=7": "UInt32",
+            "i=11": "Double",
+            "i=12": "String",
+            "i=13": "DateTime",
+            "i=21": "LocalizedText",
+        }
         
         for node in display_nodes:
-            indent = "│  " * node.depth
+            indent: str = "│  " * node.depth
+            icon: str = icon_map.get(node.node_class, "📄")
+            connector: str = "└─ " if node.depth > 0 else ""
+            node_info: str = f"{indent}{connector}{icon} {node.display_name}"
             
-            # Icon based on node class
-            icons = {
-                "Object": "📁",
-                "Variable": "📊",
-                "Method": "⚙️",
-                "ObjectType": "📦",
-                "VariableType": "📈",
-                "DataType": "🔢",
-                "ReferenceType": "🔗",
-                "View": "👁️",
-            }
-            icon = icons.get(node.node_class, "📄")
-            
-            # Format node info
-            connector = "└─ " if node.depth > 0 else ""
-            node_info = f"{indent}{connector}{icon} {node.display_name}"
-            
-            # Add browse name if different and not just a number
-            if (node.display_name != node.browse_name and 
-                not node.browse_name.startswith('[') and 
-                not node.browse_name.isdigit()):
+            # Add browse name if different and meaningful
+            if (
+                node.display_name != node.browse_name
+                and not node.browse_name.startswith("[")
+                and not node.browse_name.isdigit()
+            ):
                 node_info += f" ({node.browse_name})"
             
-            # Add data type for variables (simplified)
+            # Add data type for variables
             if node.data_type:
-                # Extract just the type number/name
-                if ';' in node.data_type:
-                    type_part = node.data_type.split(';')[-1]
-                else:
-                    type_part = node.data_type
-                    
-                # Map common types to readable names
-                type_names = {
-                    "i=1": "Boolean", "i=3": "Byte", "i=6": "Int32",
-                    "i=7": "UInt32", "i=11": "Double", "i=12": "String",
-                    "i=13": "DateTime", "i=21": "LocalizedText"
-                }
-                type_display = type_names.get(type_part, type_part.replace("i=", "Type"))
+                type_part: str = (
+                    node.data_type.split(";")[-1]
+                    if ";" in node.data_type
+                    else node.data_type
+                )
+                type_display: str = type_names.get(type_part, type_part.replace("i=", "Type"))
                 node_info += f" [{type_display}]"
             
-            # Add value if present (only for non-object nodes)
+            # Add value for Variable nodes
             if node.value is not None and node.node_class == "Variable":
-                value_str = str(node.value)
+                value_str: str = str(node.value)
                 if len(value_str) > 40:
                     value_str = value_str[:37] + "..."
                 node_info += f" = {value_str}"
             
-            # Add namespace indicator if not namespace 0
+            # Add namespace indicator for non-standard namespaces
             if node.namespace_index > 0:
                 node_info += f" [ns={node.namespace_index}]"
             
             print(node_info)
             
-            # Print node ID only for root-level nodes
-            if node.depth == 0:
+            # Display NodeID for root nodes (depth=0) and direct children (depth=1)
+            # This helps users identify correct NodeIDs for -n parameter
+            if node.depth <= 1:
                 print(f"{indent}   💡 NodeId: {node.node_id}")
         
-        # Show warning if tree was truncated
         if len(result.nodes) > max_display:
             print(f"\n⚠️  Tree truncated: showing {max_display} of {result.total_nodes} nodes")
             print(f"   Use 'export' command to see all nodes")
