@@ -813,6 +813,10 @@ Before submitting code, ensure it follows the project's coding standards and inc
 - [OPC Foundation](https://opcfoundation.org/)
 - [loguru](https://github.com/Delgan/loguru)
 
+## Authors
+
+- Mandarinetto10 - Initial work and ongoing maintenance
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
