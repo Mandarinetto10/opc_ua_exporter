@@ -28,4 +28,4 @@ jobs:
     
     - name: Run Ruff
       run: |
-        ruff check src/ tests/ --output-format=github
+        ruff check src/ tests/ --unsafe-fixes --output-format=github

@@ -8,7 +8,7 @@ configuration using the async context manager pattern.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Type, Any, ClassVar
+from typing import Any, ClassVar
 
 from asyncua import Client, ua
 from asyncua.crypto.security_policies import (
@@ -82,7 +82,7 @@ class OpcUaClient:
             ...     opcua_client = client.get_client()
     """
 
-    SECURITY_POLICY_MAP: ClassVar[dict[str, Type[Any]]] = {
+    SECURITY_POLICY_MAP: ClassVar[dict[str, type[Any]]] = {
         "None": SecurityPolicyNone,
         "Basic256": SecurityPolicyBasic256,
         "Basic128Rsa15": SecurityPolicyBasic128Rsa15,
@@ -97,23 +97,23 @@ class OpcUaClient:
     }
 
     server_url: str
-    username: Optional[str]
-    password: Optional[str]
+    username: str | None
+    password: str | None
     security_policy: str
-    security_mode: Optional[str]
-    certificate_path: Optional[Path]
-    private_key_path: Optional[Path]
+    security_mode: str | None
+    certificate_path: Path | None
+    private_key_path: Path | None
     client: Client
 
     def __init__(
         self,
         server_url: str,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        username: str | None = None,
+        password: str | None = None,
         security_policy: str = "None",
-        security_mode: Optional[str] = None,
-        certificate_path: Optional[Path] = None,
-        private_key_path: Optional[Path] = None,
+        security_mode: str | None = None,
+        certificate_path: Path | None = None,
+        private_key_path: Path | None = None,
     ) -> None:
         """Initialize OPC UA client with connection parameters.
 
@@ -266,7 +266,7 @@ class OpcUaClient:
                 f"Private key file not found: {self.private_key_path}"
             )
 
-        policy_class: Type[Any] = self.SECURITY_POLICY_MAP[self.security_policy]
+        policy_class: type[Any] = self.SECURITY_POLICY_MAP[self.security_policy]
         mode: MessageSecurityMode = self.SECURITY_MODE_MAP[self.security_mode]
 
         try:

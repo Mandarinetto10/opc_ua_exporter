@@ -10,7 +10,7 @@ from __future__ import annotations
 import ipaddress
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
@@ -30,16 +30,16 @@ def generate_self_signed_cert(
     hostnames: list[str] | None = None,
 ) -> None:
     """Generate self-signed X.509 certificate and private key for OPC UA client.
-    
+
     Creates a complete certificate with OPC UA-specific extensions including:
     - Application URI in Subject Alternative Names (required by OPC UA spec)
     - DNS names and IP addresses for hostname validation
     - Proper key usage and extended key usage flags
     - Both PEM and DER formats for compatibility
-    
+
     The generated certificate is suitable for use with asyncua-based OPC UA
     clients and supports both Sign and SignAndEncrypt security modes.
-    
+
     Args:
         cert_dir: Directory where certificate files will be saved. Created if missing.
         common_name: Certificate Common Name (CN field in subject).

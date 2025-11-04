@@ -6,23 +6,22 @@ representing OPC UA address space nodes and browse operation results.
 
 from __future__ import annotations
 
-from loguru import logger
-
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from asyncua import ua
+from loguru import logger
 
 
 @dataclass
 class OpcUaNode:
     """Represents an OPC UA node with complete metadata.
-    
+
     This class encapsulates all information about an OPC UA node including
     identification, classification, value, hierarchy position, and timestamp.
     Provides multiple serialization methods for export to different formats.
-    
+
     Attributes:
         node_id: Unique identifier of the node (e.g., 'i=84', 'ns=2;s=MyNode').
         browse_name: QualifiedName used for browsing the address space.
@@ -41,14 +40,14 @@ class OpcUaNode:
     browse_name: str
     display_name: str
     node_class: str
-    data_type: Optional[str] = None
-    value: Optional[Any] = None
-    parent_id: Optional[str] = None
+    data_type: str | None = None
+    value: Any | None = None
+    parent_id: str | None = None
     depth: int = 0
     namespace_index: int = 0
     is_namespace_node: bool = False
-    timestamp: Optional[datetime] = field(default_factory=datetime.now)
-    full_path: Optional[str] = None  # NEW: OPC UA hierarchical path
+    timestamp: datetime | None = field(default_factory=datetime.now)
+    full_path: str | None = None  # NEW: OPC UA hierarchical path
 
     def __str__(self) -> str:
         """Return simple string representation with indentation.
@@ -66,7 +65,7 @@ class OpcUaNode:
 
     def to_formatted_string(self) -> str:
         """Return rich formatted string with emoji icons and detailed information.
-        
+
         Provides a tree-like representation with:
         - Visual hierarchy using box-drawing characters
         - Emoji icons representing node types
@@ -74,7 +73,7 @@ class OpcUaNode:
         - Data type for variables
         - Current value (truncated if too long)
         - Namespace index (if non-zero)
-        
+
         Returns:
             Formatted string suitable for console tree visualization.
 
@@ -94,7 +93,7 @@ class OpcUaNode:
         """
         indent: str = "│  " * self.depth
         connector: str = "└─ " if self.depth > 0 else ""
-        
+
         # Map node classes to emoji icons for visual identification
         icons: dict[str, str] = {
             "Object": "📁",
@@ -241,7 +240,7 @@ class OpcUaNode:
                 'timestamp': '2025-01-04T14:30:22.123456'
             }
         """
-        value_serialized: Optional[str] = None
+        value_serialized: str | None = None
         if self.value is not None:
             if isinstance(self.value, (ua.DataValue, ua.Variant)):
                 # Extract value from asyncua wrapper types
@@ -290,7 +289,7 @@ class BrowseResult:
     max_depth_reached: int = 0
     namespaces: dict[int, str] = field(default_factory=dict)
     success: bool = True
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
     def add_node(self, node: OpcUaNode) -> None:
         """Add a node to the result and update statistics.
@@ -303,7 +302,7 @@ class BrowseResult:
 
         Examples:
             >>> result = BrowseResult()
-            >>> node = OpcUaNode(node_id="i=85", browse_name="Objects", 
+            >>> node = OpcUaNode(node_id="i=85", browse_name="Objects",
             ...                  display_name="Objects", node_class="Object", depth=1)
             >>> result.add_node(node)
             >>> result.total_nodes
@@ -318,16 +317,16 @@ class BrowseResult:
 
     def compute_full_paths(self) -> None:
         """Compute full OPC UA paths for all nodes.
-        
+
         Builds hierarchical paths like:
         - Root
         - Root/Objects
         - Root/Objects/Server
         - Root/Objects/Server/ServerStatus
-        
+
         This method should be called after all nodes are added.
         Uses a dictionary for O(1) lookup performance.
-        
+
         Examples:
             >>> result = BrowseResult()
             >>> # ... add nodes ...
@@ -337,31 +336,31 @@ class BrowseResult:
         """
         # Build node lookup dictionary for fast parent resolution
         node_dict: dict[str, OpcUaNode] = {node.node_id: node for node in self.nodes}
-        
+
         logger.debug(f"Computing full paths for {len(self.nodes)} nodes")
-        
+
         for node in self.nodes:
             if node.full_path:
                 continue  # Already computed
-            
+
             # Build path by walking up the hierarchy
             path_parts: list[str] = []
-            current_node: Optional[OpcUaNode] = node
-            
+            current_node: OpcUaNode | None = node
+
             while current_node:
                 # Use display_name for readability, fallback to browse_name
                 name = current_node.display_name or current_node.browse_name
                 path_parts.insert(0, name)
-                
+
                 # Move to parent
                 if current_node.parent_id and current_node.parent_id in node_dict:
                     current_node = node_dict[current_node.parent_id]
                 else:
                     current_node = None
-            
+
             # Join path with forward slash (OPC UA convention)
             node.full_path = "/".join(path_parts)
-        
+
         logger.debug("Full paths computation completed")
 
     def get_namespace_nodes(self) -> list[OpcUaNode]:
@@ -388,7 +387,7 @@ class BrowseResult:
         Examples:
             >>> result.get_nodes_by_class('Variable')
             [OpcUaNode(node_class='Variable', ...), ...]
-            
+
             >>> result.get_nodes_by_class('Method')
             [OpcUaNode(node_class='Method', ...), ...]
         """

@@ -838,8 +838,14 @@ pytest tests/test_browser.py::TestEdgeCases -v
 # Check code quality
 ruff check src/ tests/
 
+# Check code quality and auto-fix unsafe issues
+ruff check src/ tests/ --unsafe-fixes
+
 # Auto-fix issues
 ruff check --fix src/ tests/
+
+# Auto-fix issues including unsafe fixes
+ruff check --unsafe-fixes --fix src/ tests/
 
 # Check specific file
 ruff check src/opc_browser/browser.py

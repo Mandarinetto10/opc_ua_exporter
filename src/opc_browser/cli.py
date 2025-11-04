@@ -7,7 +7,6 @@ and generating self-signed certificates for secure connections.
 
 from __future__ import annotations
 
-from typing import Optional
 import argparse
 import asyncio
 import socket
@@ -52,19 +51,19 @@ def create_parser() -> argparse.ArgumentParser:
 Examples:
   # Browse with default settings (no security)
   %(prog)s browse -s opc.tcp://localhost:4840
-  
+
   # Browse with username/password (no encryption)
   %(prog)s browse -s opc.tcp://server:4840 -u admin -p password
-  
+
   # Browse with security policy and certificates
   %(prog)s browse -s opc.tcp://server:4840 --security Basic256Sha256 --mode SignAndEncrypt --cert client_cert.pem --key client_key.pem -u admin -p password
-  
+
   # Export to JSON with values and security
   %(prog)s export -s opc.tcp://localhost:4840 --security Aes128_Sha256_RsaOaep --mode Sign --cert cert.pem --key key.pem -f json --include-values
 
   # Export to CSV with namespaces only
   %(prog)s export -s opc.tcp://localhost:4840 -f csv --namespaces-only
-  
+
   # Generate self-signed certificate with default settings
   %(prog)s generate-cert --dir certificates
 
@@ -72,10 +71,10 @@ Examples:
   %(prog)s generate-cert --dir certificates --cn "My OPC UA Client" --org "My Company" --days 730 --key-size 2048 --validity 365
         """,
     )
-    
+
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
     subparsers.required = True
-    
+
     def add_common_arguments(subparser: argparse.ArgumentParser) -> None:
         """Add common arguments shared by browse and export commands.
 
@@ -101,7 +100,7 @@ Examples:
             default=3,
             help="Maximum depth for recursive browsing (default: 3)",
         )
-        
+
         security_group = subparser.add_argument_group("Security Options")
         security_group.add_argument(
             "--security",
@@ -126,7 +125,7 @@ Examples:
             type=Path,
             help="Path to client private key file (required for non-None security)",
         )
-        
+
         auth_group = subparser.add_argument_group("Authentication Options")
         auth_group.add_argument(
             "--user",
@@ -138,19 +137,19 @@ Examples:
             "-p",
             help="Password for authentication",
         )
-    
+
     browse_parser = subparsers.add_parser(
         "browse",
         help="Browse OPC UA address space and display tree structure",
     )
     add_common_arguments(browse_parser)
-    
+
     export_parser = subparsers.add_parser(
         "export",
         help="Export OPC UA address space to file",
     )
     add_common_arguments(export_parser)
-    
+
     export_parser.add_argument(
         "--format",
         "-f",
@@ -180,7 +179,7 @@ Examples:
         metavar="INDEX",
         help="Export only nodes from specific namespace index (e.g., --namespace-filter 2)",
     )
-    
+
     cert_parser = subparsers.add_parser(
         "generate-cert",
         help="Generate a self-signed client certificate for OPC UA connections",
@@ -289,7 +288,7 @@ async def execute_browse(args: argparse.Namespace) -> int:
             f"Password:        {'*' * len(args.password) if args.password else 'Not set'}"
         )
     logger.info("=" * 80)
-    
+
     try:
         async with OpcUaClient(
             server_url=args.server_url,
@@ -306,15 +305,15 @@ async def execute_browse(args: argparse.Namespace) -> int:
                 include_values=False,
                 namespaces_only=False,
             )
-            
+
             result = await browser.browse(start_node_id=args.node_id)
-            
+
             if result.success:
                 browser.print_tree(result)
                 return 0
             else:
                 return 1
-            
+
     except KeyboardInterrupt:
         logger.warning("Operation cancelled by user")
         return 130
@@ -341,7 +340,7 @@ async def execute_export(args: argparse.Namespace) -> int:
             args.format = "csv"
             args.output = Path("export.csv")
             args.include_values = True
-            
+
         JSON export with security:
             args.format = "json"
             args.security = "Basic256Sha256"
@@ -359,8 +358,8 @@ async def execute_export(args: argparse.Namespace) -> int:
 
     # Smart format/output handling
     export_format: str = args.format
-    output_path: Optional[Path] = args.output
-    
+    output_path: Path | None = args.output
+
     # Deduce format from output filename if not explicitly specified
     if output_path and export_format == "csv":  # csv is the default
         file_extension = output_path.suffix.lstrip('.').lower()
@@ -379,7 +378,7 @@ async def execute_export(args: argparse.Namespace) -> int:
                 f"   - Use --format to specify format explicitly"
             )
             return 1
-    
+
     # Verify format/output extension consistency if both specified
     if output_path and args.format != "csv":  # User explicitly set --format
         file_extension = output_path.suffix.lstrip('.').lower()
@@ -419,7 +418,7 @@ async def execute_export(args: argparse.Namespace) -> int:
             f"Password:         {'*' * len(args.password) if args.password else 'Not set'}"
         )
     logger.info("=" * 80)
-    
+
     try:
         async with OpcUaClient(
             server_url=args.server_url,
@@ -431,7 +430,7 @@ async def execute_export(args: argparse.Namespace) -> int:
             private_key_path=args.key,
         ) as client:
             namespace_filter = getattr(args, 'namespace_filter', None)
-            
+
             browser: OpcUaBrowser = OpcUaBrowser(
                 client=client.get_client(),
                 max_depth=args.depth,
@@ -439,27 +438,27 @@ async def execute_export(args: argparse.Namespace) -> int:
                 namespaces_only=args.namespaces_only,
                 namespace_filter=namespace_filter,
             )
-            
+
             logger.info("Starting address space browse...")
             result = await browser.browse(start_node_id=args.node_id)
-            
+
             if not result.success:
                 logger.error(f"❌ Browse failed: {result.error_message}")
                 return 1
-            
+
             if result.total_nodes == 0:
                 logger.warning("⚠️  No nodes discovered - nothing to export")
                 return 1
-            
+
             logger.info(f"Browse completed: {result.total_nodes} nodes discovered")
             logger.info(f"Initializing {export_format.upper()} exporter...")
-            
+
             try:
                 exporter: Exporter = Exporter(export_format=export_format)
                 final_output_path: Path = await exporter.export(result, output_path)
-                
+
                 file_size = final_output_path.stat().st_size
-                
+
                 logger.success("=" * 80)
                 logger.success("✅ Export Completed Successfully!")
                 logger.success("=" * 80)
@@ -470,19 +469,19 @@ async def execute_export(args: argparse.Namespace) -> int:
                 logger.success(f"Max Depth:        {result.max_depth_reached}")
                 logger.success(f"Namespaces:       {len(result.namespaces)}")
                 logger.success("=" * 80)
-                
+
                 return 0
-                
+
             except ValueError as e:
                 logger.error(f"❌ Export validation failed: {str(e)}")
                 return 1
-            except IOError as e:
+            except OSError as e:
                 logger.error(f"❌ Export I/O error: {str(e)}")
                 return 1
             except Exception as e:
                 logger.error(f"❌ Export failed: {type(e).__name__}: {str(e)}")
                 return 1
-            
+
     except KeyboardInterrupt:
         logger.warning("Operation cancelled by user")
         return 130
@@ -509,7 +508,7 @@ async def execute_generate_cert(args: argparse.Namespace) -> int:
             args.dir = Path("certificates")
             args.common_name = "OPC UA Client"
             args.days = 365
-            
+
         Custom certificate with multiple hostnames:
             args.hostnames = ["server1.local", "192.168.1.100"]
             args.application_uri = "urn:mycompany:opcua:client"
@@ -523,7 +522,7 @@ async def execute_generate_cert(args: argparse.Namespace) -> int:
     logger.info(f"Country:          {args.country}")
     logger.info(f"Validity Days:    {args.days}")
     logger.info(f"Application URI:  {args.application_uri}")
-    
+
     if not args.hostnames:
         local_hostname: str = socket.gethostname()
         hostnames: list[str] = ["localhost", local_hostname]
@@ -531,9 +530,9 @@ async def execute_generate_cert(args: argparse.Namespace) -> int:
     else:
         hostnames: list[str] = args.hostnames
         logger.info(f"Hostnames:        {', '.join(hostnames)}")
-    
+
     logger.info("=" * 80)
-    
+
     try:
         generate_self_signed_cert(
             cert_dir=args.dir,
@@ -559,10 +558,10 @@ async def async_main() -> int:
         Exit code from command handler.
     """
     setup_logging()
-    
+
     parser: argparse.ArgumentParser = create_parser()
     args: argparse.Namespace = parser.parse_args()
-    
+
     if args.command == "browse":
         return await execute_browse(args)
     elif args.command == "export":
