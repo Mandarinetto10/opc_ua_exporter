@@ -93,13 +93,7 @@ class JsonExportStrategy(ExportStrategy):
                 )
 
             file_size = output_path.stat().st_size
-            logger.success(
-                f"✅ JSON export completed successfully\n"
-                f"   File: {output_path.absolute()}\n"
-                f"   Size: {file_size / 1024:.2f} KB\n"
-                f"   Nodes: {result.total_nodes}\n"
-                f"   Format: UTF-8, pretty-printed with 2-space indentation"
-            )
+            logger.debug(f"JSON file written successfully: {file_size:,} bytes")
 
         except OSError as e:
             error_msg = f"Failed to write JSON file: {type(e).__name__}: {str(e)}"

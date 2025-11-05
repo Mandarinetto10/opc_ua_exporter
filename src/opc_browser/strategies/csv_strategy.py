@@ -98,13 +98,7 @@ class CsvExportStrategy(ExportStrategy):
                     logger.debug(f"Namespace information written: {len(result.namespaces)} namespaces")
 
             file_size = output_path.stat().st_size
-            logger.success(
-                f"✅ CSV export completed successfully\n"
-                f"   File: {output_path.absolute()}\n"
-                f"   Size: {file_size / 1024:.2f} KB\n"
-                f"   Nodes: {result.total_nodes}\n"
-                f"   Format: UTF-8 with BOM, comma-delimited, quoted fields"
-            )
+            logger.debug(f"CSV file written successfully: {file_size:,} bytes")
 
         except OSError as e:
             error_msg = f"Failed to write CSV file: {type(e).__name__}: {str(e)}"

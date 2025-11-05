@@ -370,24 +370,20 @@ async def execute_export(args: argparse.Namespace) -> int:
             logger.debug(f"Format auto-detected from output filename: {export_format}")
         elif file_extension and file_extension not in Exporter.get_supported_formats():
             # User specified output with unsupported extension
-            logger.error(
-                f"❌ Unsupported file extension '.{file_extension}' in output path.\n"
-                f"   Supported formats: {', '.join(Exporter.get_supported_formats())}\n"
-                f"   Either:\n"
-                f"   - Change extension to one of: {', '.join('.' + f for f in Exporter.get_supported_formats())}\n"
-                f"   - Use --format to specify format explicitly"
-            )
+            logger.error(f"❌ Unsupported file extension '.{file_extension}' in output path.")
+            logger.error(f"   Supported formats: {', '.join(Exporter.get_supported_formats())}")
+            logger.error(f"   Either:")
+            logger.error(f"   - Change extension to one of: {', '.join('.' + f for f in Exporter.get_supported_formats())}")
+            logger.error(f"   - Use --format to specify format explicitly")
             return 1
 
     # Verify format/output extension consistency if both specified
     if output_path and args.format != "csv":  # User explicitly set --format
         file_extension = output_path.suffix.lstrip('.').lower()
         if file_extension and file_extension != export_format:
-            logger.warning(
-                f"⚠️  Format mismatch detected:\n"
-                f"   --format={export_format} but output extension is '.{file_extension}'\n"
-                f"   Using --format={export_format} (will override extension)"
-            )
+            logger.warning(f"⚠️  Format mismatch detected:")
+            logger.warning(f"   --format={export_format} but output extension is '.{file_extension}'")
+            logger.warning(f"   Using --format={export_format} (will override extension)")
             # Fix extension to match format
             output_path = output_path.with_suffix(f".{export_format}")
             logger.info(f"   Corrected output path to: {output_path}")
@@ -414,9 +410,7 @@ async def execute_export(args: argparse.Namespace) -> int:
         logger.info(f"Private Key:      {args.key}")
     if args.user:
         logger.info(f"Username:         {args.user}")
-        logger.info(
-            f"Password:         {'*' * len(args.password) if args.password else 'Not set'}"
-        )
+        logger.info(f"Password:         {'*' * len(args.password) if args.password else 'Not set'}")
     logger.info("=" * 80)
 
     try:

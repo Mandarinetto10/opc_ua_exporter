@@ -6,7 +6,6 @@
 [![Tests](https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/tests.yml/badge.svg)](https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/tests.yml)
 [![Code Quality](https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/code-quality.yml/badge.svg)](https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/code-quality.yml)
 [![Type Check](https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/type-check.yml/badge.svg)](https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/type-check.yml)
-[![codecov](https://codecov.io/gh/Mandarinetto10/opc_ua_exporter/branch/main/graph/badge.svg)](https://codecov.io/gh/Mandarinetto10/opc_ua_exporter)
 
 A professional, feature-rich CLI tool for browsing and exporting OPC UA server address spaces. Built with SOLID principles, asynchronous design, and comprehensive security support.
 
@@ -590,6 +589,7 @@ Generated certificates include:
 ```
 opc-ua-browser/
 ├── pyproject.toml              # Project configuration
+├── requirements.lock           # Locked dependencies
 ├── requirements.txt            # Python dependencies
 ├── SETUP.md                   # Detailed setup guide
 ├── README.md                  # This file
@@ -885,16 +885,6 @@ mypy --strict src/
 # Generate HTML report
 mypy src/ --html-report mypy_report/
 ```
-
-### Coverage Goals
-
-| Module | Current Coverage | Goal |
-|--------|-----------------|------|
-| `browser.py` | 96% | ✅ Achieved |
-| `models.py` | 52% | 🎯 Target: 90% |
-| `client.py` | 26% | 🎯 Target: 90% |
-| `exporter.py` | 19% | 🎯 Target: 90% |
-| `strategies/` | 12-33% | 🎯 Target: 90% |
 
 ### Writing New Tests
 

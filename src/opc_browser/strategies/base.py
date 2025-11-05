@@ -63,10 +63,9 @@ class ExportStrategy(ABC):
             logger.error(error_msg)
             raise ValueError(error_msg)
 
-        logger.debug(
-            f"✅ Validation passed: {len(result.nodes)} nodes ready for export, "
-            f"max depth {result.max_depth_reached}, {len(result.namespaces)} namespaces"
-        )
+        logger.debug(f"✅ Validation passed: {len(result.nodes)} nodes ready for export")
+        logger.debug(f"   Max depth: {result.max_depth_reached}")
+        logger.debug(f"   Namespaces: {len(result.namespaces)}")
 
     def ensure_output_directory(self, output_path: Path) -> None:
         """

@@ -79,11 +79,9 @@ class Exporter:
         self.export_format = export_format
         self.strategy = self.STRATEGIES[export_format]()
 
-        logger.debug(
-            f"Exporter initialized successfully\n"
-            f"   Format: {export_format.upper()}\n"
-            f"   Strategy: {self.strategy.__class__.__name__}"
-        )
+        logger.debug(f"Exporter initialized successfully")
+        logger.debug(f"   Format: {export_format.upper()}")
+        logger.debug(f"   Strategy: {self.strategy.__class__.__name__}")
 
     async def export(
         self,
@@ -147,12 +145,6 @@ class Exporter:
             logger.error(error_msg)
             raise OSError(error_msg) from e
 
-        logger.info(
-            f"Starting {self.export_format.upper()} export\n"
-            f"   Nodes to export: {result.total_nodes}\n"
-            f"   Output file: {output_path.absolute()}"
-        )
-
         # Delegate to strategy
         try:
             await self.strategy.export(result, output_path)
@@ -163,13 +155,12 @@ class Exporter:
                 logger.error(error_msg)
                 raise ExporterError(error_msg)
 
-            file_size = output_path.stat().st_size
+            
             logger.debug("=" * 80)
-            logger.debug("EXPORT COMPLETED SUCCESSFULLY")
+            logger.debug("EXPORT VERIFICATION")
             logger.debug("=" * 80)
-            logger.debug(f"File Path:    {output_path.absolute()}")
-            logger.debug(f"File Size:    {file_size:,} bytes ({file_size / 1024:.2f} KB)")
-            logger.debug(f"Nodes Exported: {result.total_nodes}")
+            logger.debug(f"File exists: {output_path.exists()}")
+            logger.debug(f"File size: {output_path.stat().st_size:,} bytes")
             logger.debug("=" * 80)
 
             return output_path.absolute()
