@@ -25,10 +25,7 @@ class JsonExportStrategy(ExportStrategy):
     """
 
     async def export(
-        self, 
-        result: BrowseResult, 
-        output_path: Path,
-        full_export: bool = False  # NEW
+        self, result: BrowseResult, output_path: Path, full_export: bool = False  # NEW
     ) -> None:
         """
         Export nodes to JSON file with pretty formatting.
@@ -64,13 +61,14 @@ class JsonExportStrategy(ExportStrategy):
                     "full_export": full_export,  # NEW
                 },
                 "namespaces": [
-                    {"index": idx, "uri": uri}
-                    for idx, uri in result.namespaces.items()
+                    {"index": idx, "uri": uri} for idx, uri in result.namespaces.items()
                 ],
                 "nodes": [],
             }
 
-            logger.debug(f"Metadata created: {result.total_nodes} nodes, {len(result.namespaces)} namespaces")
+            logger.debug(
+                f"Metadata created: {result.total_nodes} nodes, {len(result.namespaces)} namespaces"
+            )
 
             # Convert nodes to dictionaries with progress logging
             nodes_converted = 0
@@ -86,7 +84,7 @@ class JsonExportStrategy(ExportStrategy):
 
             # Write to file with pretty formatting
             logger.debug(f"Writing JSON to file: {output_path}")
-            with open(output_path, 'w', encoding='utf-8') as jsonfile:
+            with open(output_path, "w", encoding="utf-8") as jsonfile:
                 json.dump(
                     export_data,
                     jsonfile,
@@ -102,7 +100,9 @@ class JsonExportStrategy(ExportStrategy):
             error_msg = f"Failed to write JSON file: {type(e).__name__}: {str(e)}"
             logger.error(error_msg)
             raise OSError(error_msg) from e
-        except json.JSONEncodeError as e:
+        except (TypeError, ValueError) as e:
+            # TypeError: Object not JSON serializable
+            # ValueError: Circular reference or invalid JSON structure
             error_msg = f"JSON encoding failed: {type(e).__name__}: {str(e)}"
             logger.error(error_msg)
             raise

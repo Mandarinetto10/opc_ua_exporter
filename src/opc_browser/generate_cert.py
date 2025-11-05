@@ -80,10 +80,8 @@ def generate_self_signed_cert(
 
         # RSA key size of 2048 bits is minimum recommended by OPC UA specification
         logger.info("Generating RSA private key (2048 bits)...")
-        private_key: rsa.RSAPrivateKey = rsa.generate_private_key(
-            public_exponent=65537,
-            key_size=2048,
-            backend=default_backend()
+        private_key = rsa.generate_private_key(
+            public_exponent=65537, key_size=2048, backend=default_backend()
         )
 
         key_path: Path = cert_dir / "client_key.pem"
@@ -92,72 +90,77 @@ def generate_self_signed_cert(
                 private_key.private_bytes(
                     encoding=serialization.Encoding.PEM,
                     format=serialization.PrivateFormat.PKCS8,
-                    encryption_algorithm=serialization.NoEncryption()
+                    encryption_algorithm=serialization.NoEncryption(),
                 )
             )
         logger.success(f"✅ Private key saved: {key_path}")
 
         logger.info("Generating self-signed X.509 certificate...")
-        subject: x509.Name = x509.Name([
-            x509.NameAttribute(NameOID.COUNTRY_NAME, country),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, organization),
-            x509.NameAttribute(NameOID.COMMON_NAME, common_name),
-        ])
+        subject: x509.Name = x509.Name(
+            [
+                x509.NameAttribute(NameOID.COUNTRY_NAME, country),
+                x509.NameAttribute(NameOID.ORGANIZATION_NAME, organization),
+                x509.NameAttribute(NameOID.COMMON_NAME, common_name),
+            ]
+        )
         issuer: x509.Name = subject
 
         # Build Subject Alternative Names - OPC UA requires Application URI
-        san_list: list[x509.GeneralName] = [
-            x509.UniformResourceIdentifier(application_uri)
-        ]
+        san_list: list[x509.GeneralName] = [x509.UniformResourceIdentifier(application_uri)]
         for hostname in hostnames:
             san_list.append(x509.DNSName(hostname))
         # Add loopback addresses for local testing
-        san_list.extend([
-            x509.IPAddress(ipaddress.IPv4Address("127.0.0.1")),
-            x509.IPAddress(ipaddress.IPv6Address("::1")),
-        ])
+        san_list.extend(
+            [
+                x509.IPAddress(ipaddress.IPv4Address("127.0.0.1")),
+                x509.IPAddress(ipaddress.IPv6Address("::1")),
+            ]
+        )
 
         now: datetime = datetime.now(timezone.utc)
-        cert: x509.Certificate = x509.CertificateBuilder().subject_name(
-            subject
-        ).issuer_name(
-            issuer
-        ).public_key(
-            private_key.public_key()
-        ).serial_number(
-            x509.random_serial_number()
-        ).not_valid_before(
-            now
-        ).not_valid_after(
-            now + timedelta(days=validity_days)
-        ).add_extension(
-            x509.SubjectAlternativeName(san_list),
-            critical=False,
-        ).add_extension(
-            x509.BasicConstraints(ca=False, path_length=None),
-            critical=True,
-        ).add_extension(
-            # Key usage appropriate for OPC UA client/server authentication
-            x509.KeyUsage(
-                digital_signature=True,
-                key_encipherment=True,
-                content_commitment=False,
-                data_encipherment=True,
-                key_agreement=False,
-                key_cert_sign=False,
-                crl_sign=False,
-                encipher_only=False,
-                decipher_only=False,
-            ),
-            critical=True,
-        ).add_extension(
-            # Extended key usage for both client and server authentication
-            x509.ExtendedKeyUsage([
-                x509.oid.ExtendedKeyUsageOID.CLIENT_AUTH,
-                x509.oid.ExtendedKeyUsageOID.SERVER_AUTH,
-            ]),
-            critical=False,
-        ).sign(private_key, hashes.SHA256(), backend=default_backend())
+        cert: x509.Certificate = (
+            x509.CertificateBuilder()
+            .subject_name(subject)
+            .issuer_name(issuer)
+            .public_key(private_key.public_key())
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(now)
+            .not_valid_after(now + timedelta(days=validity_days))
+            .add_extension(
+                x509.SubjectAlternativeName(san_list),
+                critical=False,
+            )
+            .add_extension(
+                x509.BasicConstraints(ca=False, path_length=None),
+                critical=True,
+            )
+            .add_extension(
+                # Key usage appropriate for OPC UA client/server authentication
+                x509.KeyUsage(
+                    digital_signature=True,
+                    key_encipherment=True,
+                    content_commitment=False,
+                    data_encipherment=True,
+                    key_agreement=False,
+                    key_cert_sign=False,
+                    crl_sign=False,
+                    encipher_only=False,
+                    decipher_only=False,
+                ),
+                critical=True,
+            )
+            .add_extension(
+                # Extended key usage for both client and server authentication
+                x509.ExtendedKeyUsage(
+                    [
+                        x509.oid.ExtendedKeyUsageOID.CLIENT_AUTH,
+                        x509.oid.ExtendedKeyUsageOID.SERVER_AUTH,
+                    ]
+                ),
+                critical=False,
+            )
+            .sign(private_key, hashes.SHA256(), backend=default_backend())
+        )
 
         cert_path: Path = cert_dir / "client_cert.pem"
         with open(cert_path, "wb") as f:
@@ -175,14 +178,14 @@ def generate_self_signed_cert(
         logger.info("=" * 80)
         logger.info(f"Subject:      {cert.subject.rfc4514_string()}")
         logger.info(f"Issuer:       {cert.issuer.rfc4514_string()}")
-        logger.info(f"Valid From:   {cert.not_valid_before_utc}")
-        logger.info(f"Valid Until:  {cert.not_valid_after_utc}")
+        logger.info(f"Valid From:   {cert.not_valid_before_utc}")  # type: ignore[attr-defined]
+        logger.info(f"Valid Until:  {cert.not_valid_after_utc}")  # type: ignore[attr-defined]
         logger.info(f"Serial:       {cert.serial_number}")
 
         try:
             san_ext: x509.Extension[x509.SubjectAlternativeName] = cast(
                 x509.Extension[x509.SubjectAlternativeName],
-                cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
+                cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME),
             )
             logger.info("Subject Alternative Names:")
             for name in san_ext.value:

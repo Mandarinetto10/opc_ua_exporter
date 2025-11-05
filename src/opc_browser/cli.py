@@ -32,7 +32,7 @@ def setup_logging() -> None:
     logger.add(
         sys.stderr,
         format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-               "<level>{level: <8}</level> | <level>{message}</level>",
+        "<level>{level: <8}</level> | <level>{message}</level>",
         level="INFO",
         colorize=True,
     )
@@ -50,19 +50,19 @@ def create_parser() -> argparse.ArgumentParser:
         epilog="""
 Examples:
   # Browse with default settings (no security)
-  %(prog)s browse -s opc.tcp://localhost:4840
+  %(prog)s browse -s opc.tcp://localhost:48010
 
   # Browse with username/password (no encryption)
-  %(prog)s browse -s opc.tcp://server:4840 -u admin -p password
+  %(prog)s browse -s opc.tcp://server:48010 -u admin -p password
 
   # Browse with security policy and certificates
-  %(prog)s browse -s opc.tcp://server:4840 --security Basic256Sha256 --mode SignAndEncrypt --cert client_cert.pem --key client_key.pem -u admin -p password
+  %(prog)s browse -s opc.tcp://server:48010 --security Basic256Sha256 --mode SignAndEncrypt --cert client_cert.pem --key client_key.pem -u admin -p password
 
   # Export to JSON with values and security
-  %(prog)s export -s opc.tcp://localhost:4840 --security Aes128_Sha256_RsaOaep --mode Sign --cert cert.pem --key key.pem -f json --include-values
+  %(prog)s export -s opc.tcp://localhost:48010 --security Aes128_Sha256_RsaOaep --mode Sign --cert cert.pem --key key.pem -f json --include-values
 
   # Export to CSV with namespaces only
-  %(prog)s export -s opc.tcp://localhost:4840 -f csv --namespaces-only
+  %(prog)s export -s opc.tcp://localhost:48010 -f csv --namespaces-only
 
   # Generate self-signed certificate with default settings
   %(prog)s generate-cert --dir certificates
@@ -85,7 +85,7 @@ Examples:
             "--server-url",
             "-s",
             required=True,
-            help="OPC UA server endpoint URL (e.g., opc.tcp://localhost:4840)",
+            help="OPC UA server endpoint URL (e.g., opc.tcp://localhost:48010)",
         )
         subparser.add_argument(
             "--node-id",
@@ -226,7 +226,7 @@ Examples:
         action="append",
         dest="hostnames",
         help="Hostname/DNS name to include in certificate (can be used multiple times, "
-             "default: localhost + local hostname)",
+        "default: localhost + local hostname)",
     )
 
     return parser
@@ -247,7 +247,7 @@ async def execute_browse(args: argparse.Namespace) -> int:
 
     Examples:
         Basic browse:
-            args.server_url = "opc.tcp://localhost:4840"
+            args.server_url = "opc.tcp://localhost:48010"
             args.node_id = "i=84"
             args.depth = 3
 
@@ -260,10 +260,10 @@ async def execute_browse(args: argparse.Namespace) -> int:
     try:
         parsed_url: ParseResult = urlparse(args.server_url)
         server_hostname: str = parsed_url.hostname or "unknown"
-        port: int = parsed_url.port or 4840
+        port: int = parsed_url.port or 48010
     except Exception:
         server_hostname = "unknown"
-        port = 4840
+        port = 48010
 
     client_hostname: str = socket.gethostname()
 
@@ -283,9 +283,7 @@ async def execute_browse(args: argparse.Namespace) -> int:
         logger.info(f"Private Key:     {args.key}")
     if args.user:
         logger.info(f"Username:        {args.user}")
-        logger.info(
-            f"Password:        {'*' * len(args.password) if args.password else 'Not set'}"
-        )
+        logger.info(f"Password:        {'*' * len(args.password) if args.password else 'Not set'}")
     logger.info("=" * 80)
 
     try:
@@ -348,10 +346,10 @@ async def execute_export(args: argparse.Namespace) -> int:
     try:
         parsed_url: ParseResult = urlparse(args.server_url)
         server_hostname: str = parsed_url.hostname or "unknown"
-        port: int = parsed_url.port or 4840
+        port: int = parsed_url.port or 48010
     except Exception:
         server_hostname = "unknown"
-        port = 4840
+        port = 48010
 
     client_hostname: str = socket.gethostname()
 
@@ -361,7 +359,7 @@ async def execute_export(args: argparse.Namespace) -> int:
 
     # Deduce format from output filename if not explicitly specified
     if output_path and export_format == "csv":  # csv is the default
-        file_extension = output_path.suffix.lstrip('.').lower()
+        file_extension = output_path.suffix.lstrip(".").lower()
         if file_extension in Exporter.get_supported_formats():
             # User specified output with extension but no --format
             # Use extension as format
@@ -371,17 +369,21 @@ async def execute_export(args: argparse.Namespace) -> int:
             # User specified output with unsupported extension
             logger.error(f"❌ Unsupported file extension '.{file_extension}' in output path.")
             logger.error(f"   Supported formats: {', '.join(Exporter.get_supported_formats())}")
-            logger.error(f"   Either:")
-            logger.error(f"   - Change extension to one of: {', '.join('.' + f for f in Exporter.get_supported_formats())}")
-            logger.error(f"   - Use --format to specify format explicitly")
+            logger.error("   Either:")
+            logger.error(
+                f"   - Change extension to one of: {', '.join('.' + f for f in Exporter.get_supported_formats())}"
+            )
+            logger.error("   - Use --format to specify format explicitly")
             return 1
 
     # Verify format/output extension consistency if both specified
     if output_path and args.format != "csv":  # User explicitly set --format
-        file_extension = output_path.suffix.lstrip('.').lower()
+        file_extension = output_path.suffix.lstrip(".").lower()
         if file_extension and file_extension != export_format:
-            logger.warning(f"⚠️  Format mismatch detected:")
-            logger.warning(f"   --format={export_format} but output extension is '.{file_extension}'")
+            logger.warning("⚠️  Format mismatch detected:")
+            logger.warning(
+                f"   --format={export_format} but output extension is '.{file_extension}'"
+            )
             logger.warning(f"   Using --format={export_format} (will override extension)")
             # Fix extension to match format
             output_path = output_path.with_suffix(f".{export_format}")
@@ -445,8 +447,7 @@ async def execute_export(args: argparse.Namespace) -> int:
 
             try:
                 exporter: Exporter = Exporter(
-                    export_format=export_format,
-                    full_export=args.full_export
+                    export_format=export_format, full_export=args.full_export
                 )
                 final_output_path: Path = await exporter.export(result, output_path)
 
@@ -516,13 +517,14 @@ async def execute_generate_cert(args: argparse.Namespace) -> int:
     logger.info(f"Validity Days:    {args.days}")
     logger.info(f"Application URI:  {args.application_uri}")
 
+    hostnames_for_cert: list[str]
     if not args.hostnames:
         local_hostname: str = socket.gethostname()
-        hostnames: list[str] = ["localhost", local_hostname]
-        logger.info(f"Hostnames:        {', '.join(hostnames)} (auto-detected)")
+        hostnames_for_cert = ["localhost", local_hostname]
+        logger.info(f"Hostnames:        {', '.join(hostnames_for_cert)} (auto-detected)")
     else:
-        hostnames: list[str] = args.hostnames
-        logger.info(f"Hostnames:        {', '.join(hostnames)}")
+        hostnames_for_cert = args.hostnames
+        logger.info(f"Hostnames:        {', '.join(hostnames_for_cert)}")
 
     logger.info("=" * 80)
 
@@ -534,7 +536,7 @@ async def execute_generate_cert(args: argparse.Namespace) -> int:
             country=args.country,
             validity_days=args.days,
             application_uri=args.application_uri,
-            hostnames=hostnames,
+            hostnames=hostnames_for_cert,
         )
         return 0
     except Exception:

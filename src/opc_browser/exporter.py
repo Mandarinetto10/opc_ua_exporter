@@ -20,6 +20,7 @@ from .strategies.xml_strategy import XmlExportStrategy
 
 class ExporterError(Exception):
     """Base exception for exporter errors."""
+
     pass
 
 
@@ -69,10 +70,9 @@ class Exporter:
         export_format = export_format.lower()
 
         if export_format not in self.STRATEGIES:
-            supported = ', '.join(self.STRATEGIES.keys())
+            supported = ", ".join(self.STRATEGIES.keys())
             error_msg = (
-                f"Unsupported export format '{export_format}'. "
-                f"Supported formats: {supported}"
+                f"Unsupported export format '{export_format}'. " f"Supported formats: {supported}"
             )
             logger.error(error_msg)
             raise ValueError(error_msg)
@@ -81,7 +81,7 @@ class Exporter:
         self.full_export = full_export  # NEW
         self.strategy = self.STRATEGIES[export_format]()
 
-        logger.debug(f"Exporter initialized successfully")
+        logger.debug("Exporter initialized successfully")
         logger.debug(f"   Format: {export_format.upper()}")
         logger.debug(f"   Full Export: {full_export}")
         logger.debug(f"   Strategy: {self.strategy.__class__.__name__}")
@@ -158,7 +158,6 @@ class Exporter:
                 logger.error(error_msg)
                 raise ExporterError(error_msg)
 
-            
             logger.debug("=" * 80)
             logger.debug("EXPORT VERIFICATION")
             logger.debug("=" * 80)

@@ -25,10 +25,7 @@ class CsvExportStrategy(ExportStrategy):
     """
 
     async def export(
-        self, 
-        result: BrowseResult, 
-        output_path: Path,
-        full_export: bool = False  # NEW
+        self, result: BrowseResult, output_path: Path, full_export: bool = False  # NEW
     ) -> None:
         """Export nodes to CSV file with proper quoting for Excel compatibility.
 
@@ -45,12 +42,9 @@ class CsvExportStrategy(ExportStrategy):
         logger.info(f"Exporting {len(result.nodes)} nodes to CSV: {output_path}")
 
         try:
-            with open(output_path, 'w', newline='', encoding='utf-8-sig') as csvfile:
+            with open(output_path, "w", newline="", encoding="utf-8-sig") as csvfile:
                 writer = csv.writer(
-                    csvfile,
-                    delimiter=',',
-                    quotechar='"',
-                    quoting=csv.QUOTE_MINIMAL
+                    csvfile, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
                 )
 
                 # Write header

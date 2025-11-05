@@ -40,6 +40,7 @@ dev = [
     "black>=23.0.0",
     "mypy>=1.0.0",
     "types-cryptography>=3.3.0",
+    "lxml>=4.9.0",
 ]
 
 [project.scripts]
@@ -62,7 +63,7 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-select = [
+lint.select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
     "F",   # pyflakes
@@ -73,11 +74,11 @@ select = [
     "C4",  # flake8-comprehensions
     "SIM", # flake8-simplify
 ]
-ignore = [
+lint.ignore = [
     "E501",  # line too long (handled by black)
 ]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["opc_browser"]
 
 [tool.pytest.ini_options]

@@ -7,7 +7,9 @@ support for value reading and namespace filtering.
 
 from __future__ import annotations
 
+import contextlib
 import re
+from typing import Any
 
 from asyncua import Client, ua
 from asyncua.common.node import Node
@@ -39,7 +41,7 @@ class OpcUaBrowser:
 
     Examples:
         Basic browse:
-            >>> async with OpcUaClient("opc.tcp://localhost:4840") as client:
+            >>> async with OpcUaClient("opc.tcp://localhost:48010") as client:
             ...     browser = OpcUaBrowser(client.get_client(), max_depth=5)
             ...     result = await browser.browse()
             ...     browser.print_tree(result)
@@ -91,7 +93,7 @@ class OpcUaBrowser:
     }
 
     # Node ID validation patterns (OPC UA specification compliant)
-    NODE_ID_PATTERNS: list[re.Pattern] = [
+    NODE_ID_PATTERNS: list[re.Pattern[str]] = [
         re.compile(r"^i=\d+$"),  # Numeric: i=123
         re.compile(r"^ns=\d+;i=\d+$"),  # Numeric with namespace: ns=2;i=456
         re.compile(r"^ns=\d+;s=.+$"),  # String: ns=2;s=StringId
@@ -279,7 +281,7 @@ class OpcUaBrowser:
             is_namespace_node: bool = await self._is_namespace_node(node, browse_name)
 
             data_type: str | None = None
-            value: any | None = None
+            value: Any | None = None
             data_type_name: str | None = None
 
             # Extended attributes (full export only)
@@ -304,15 +306,11 @@ class OpcUaBrowser:
                     pass  # Description is optional
 
                 # Read WriteMask and UserWriteMask (common to all)
-                try:
+                with contextlib.suppress(Exception):
                     write_mask = await node.read_write_mask()
-                except Exception:
-                    pass
 
-                try:
+                with contextlib.suppress(Exception):
                     user_write_mask = await node.read_user_write_mask()
-                except Exception:
-                    pass
 
             if node_class == NodeClass.Variable:
                 try:
@@ -351,15 +349,11 @@ class OpcUaBrowser:
                         except Exception:
                             pass
 
-                        try:
+                        with contextlib.suppress(Exception):
                             minimum_sampling_interval = await node.read_minimum_sampling_interval()
-                        except Exception:
-                            pass
 
-                        try:
+                        with contextlib.suppress(Exception):
                             historizing = await node.read_historizing()
-                        except Exception:
-                            pass
 
                 except Exception as e:
                     logger.debug(f"Could not read variable data for {node_id}: {e}")
@@ -367,23 +361,16 @@ class OpcUaBrowser:
             elif node_class == NodeClass.Object:
                 # Read Object-specific attributes (full export only)
                 if self.full_export:
-                    try:
+                    with contextlib.suppress(Exception):
                         event_notifier = await node.read_event_notifier()
-                    except Exception:
-                        pass
 
-            elif node_class == NodeClass.Method:
+            elif node_class == NodeClass.Method and self.full_export:
                 # Read Method-specific attributes (full export only)
-                if self.full_export:
-                    try:
-                        executable = await node.read_executable()
-                    except Exception:
-                        pass
+                with contextlib.suppress(Exception):
+                    executable = await node.read_executable()
 
-                    try:
-                        user_executable = await node.read_user_executable()
-                    except Exception:
-                        pass
+                with contextlib.suppress(Exception):
+                    user_executable = await node.read_user_executable()
 
             opc_node: OpcUaNode = OpcUaNode(
                 node_id=node_id,
@@ -561,11 +548,26 @@ class OpcUaBrowser:
         if "=" not in node_id:
             error_msg += "Hint: Node ID must contain '=' (e.g., 'i=84' or 'ns=2;s=Studio')\n"
         elif node_id.startswith("s="):
-            error_msg += f"Hint: Did you mean 'ns=2;s={node_id[2:]}'? String IDs require namespace prefix.\n"
+            error_msg += (
+                f"Hint: Did you mean 'ns=2;s={node_id[2:]}'? String IDs require namespace prefix.\n"
+            )
         elif node_id.startswith("ns=") and ";" not in node_id:
             error_msg += "Hint: After 'ns=X' you need ';i=', ';s=', ';g=', or ';b=' followed by the identifier.\n"
 
         return error_msg
+
+    def _format_access_level(self, access_level: Any) -> str:
+        """Format access level value to string.
+
+        Args:
+            access_level: Access level value from OPC UA server.
+
+        Returns:
+            String representation of access level.
+        """
+        if access_level is None:
+            return ""
+        return str(access_level)
 
     def print_tree(self, result: BrowseResult) -> None:
         """Print browse result as formatted tree structure to console.
@@ -634,8 +636,8 @@ class OpcUaBrowser:
             "View": "👁️",
         }
         for node_type, count in sorted(node_types.items()):
-            icon: str = icon_map.get(node_type, "📄")
-            print(f"   {icon} {node_type}: {count}")
+            type_icon: str = icon_map.get(node_type, "📄")
+            print(f"   {type_icon} {node_type}: {count}")
 
         if result.namespaces:
             print("\n🌐 NAMESPACES:")
@@ -666,9 +668,9 @@ class OpcUaBrowser:
 
         for node in display_nodes:
             indent: str = "│  " * node.depth
-            icon: str = icon_map.get(node.node_class, "📄")
+            node_icon: str = icon_map.get(node.node_class, "📄")
             connector: str = "└─ " if node.depth > 0 else ""
-            node_info: str = f"{indent}{connector}{icon} {node.display_name}"
+            node_info: str = f"{indent}{connector}{node_icon} {node.display_name}"
 
             # Add browse name if different and meaningful
             if (
@@ -681,9 +683,7 @@ class OpcUaBrowser:
             # Add data type for variables
             if node.data_type:
                 type_part: str = (
-                    node.data_type.split(";")[-1]
-                    if ";" in node.data_type
-                    else node.data_type
+                    node.data_type.split(";")[-1] if ";" in node.data_type else node.data_type
                 )
                 type_display: str = type_names.get(type_part, type_part.replace("i=", "Type"))
                 node_info += f" [{type_display}]"

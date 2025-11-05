@@ -59,7 +59,7 @@ class OpcUaNode:
     is_namespace_node: bool = False
     timestamp: datetime | None = field(default_factory=datetime.now)
     full_path: str | None = None
-    
+
     # Full export fields (OPC UA extended attributes)
     description: str | None = None
     access_level: str | None = None
@@ -190,7 +190,7 @@ class OpcUaNode:
             "IsNamespaceNode",
             "Timestamp",
         ]
-        
+
         if full_export:
             extended_headers = [
                 "Description",
@@ -205,7 +205,7 @@ class OpcUaNode:
                 "Historizing",
             ]
             return base_headers + extended_headers
-        
+
         return base_headers
 
     def to_csv_row(self, full_export: bool = False) -> list[str]:
@@ -237,9 +237,7 @@ class OpcUaNode:
         value_str: str = ""
         if self.value is not None:
             if isinstance(self.value, (ua.DataValue, ua.Variant)):
-                value_str = str(
-                    self.value.Value if hasattr(self.value, "Value") else self.value
-                )
+                value_str = str(self.value.Value if hasattr(self.value, "Value") else self.value)
             else:
                 value_str = str(self.value)
 
@@ -257,7 +255,7 @@ class OpcUaNode:
             str(self.is_namespace_node),
             self.timestamp.isoformat() if self.timestamp else "",
         ]
-        
+
         if full_export:
             extended_row = [
                 self.description or "",
@@ -268,11 +266,15 @@ class OpcUaNode:
                 str(self.event_notifier) if self.event_notifier is not None else "",
                 str(self.executable) if self.executable is not None else "",
                 str(self.user_executable) if self.user_executable is not None else "",
-                str(self.minimum_sampling_interval) if self.minimum_sampling_interval is not None else "",
+                (
+                    str(self.minimum_sampling_interval)
+                    if self.minimum_sampling_interval is not None
+                    else ""
+                ),
                 str(self.historizing) if self.historizing is not None else "",
             ]
             return base_row + extended_row
-        
+
         return base_row
 
     def to_dict(self, full_export: bool = False) -> dict[str, Any]:
@@ -309,9 +311,9 @@ class OpcUaNode:
             "is_namespace_node": self.is_namespace_node,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
         }
-        
+
         if full_export:
-            extended_dict = {
+            extended_dict: dict[str, Any] = {
                 "description": self.description,
                 "access_level": self.access_level,
                 "user_access_level": self.user_access_level,
@@ -324,7 +326,7 @@ class OpcUaNode:
                 "historizing": self.historizing,
             }
             base_dict.update(extended_dict)
-        
+
         return base_dict
 
 

@@ -13,14 +13,19 @@ from .base import ExportStrategy
 
 
 class XmlExportStrategy(ExportStrategy):
-    """XML export strategy for OPC UA nodes."""
+    """
+    Exports browse results to XML format.
+
+    XML format is ideal for:
+    - Enterprise systems and SOAP services
+    - Configuration files
+    - Industry standard data exchange
+    - Schema validation and transformation
+    """
 
     async def export(
-        self, 
-        result: BrowseResult, 
-        output_path: Path | None,
-        full_export: bool = False  # NEW
-    ) -> Path:
+        self, result: BrowseResult, output_path: Path, full_export: bool = False  # NEW
+    ) -> None:
         """Export nodes to XML file with pretty formatting.
 
         Args:
@@ -33,16 +38,46 @@ class XmlExportStrategy(ExportStrategy):
         self.validate_result(result)
         self.ensure_output_directory(output_path)
 
-        logger.info(f"Exporting {len(result.nodes)} nodes to XML: {output_path}")
-
         try:
-            # Only export nodes, no summary/statistics/namespaces
-            root = Element("OpcUaNodes")
-            for node in result.nodes:
-                node_elem = self.node_to_element(node)
-                root.append(node_elem)
+            logger.info(f"Exporting {len(result.nodes)} nodes to XML: {output_path}")
 
-            logger.debug(f"All {len(result.nodes)} nodes added to XML structure")
+            root = Element("OpcUaAddressSpace")
+
+            # Add metadata section
+            metadata = SubElement(root, "Metadata")
+            SubElement(metadata, "TotalNodes").text = str(result.total_nodes)
+            SubElement(metadata, "MaxDepthReached").text = str(result.max_depth_reached)
+            SubElement(metadata, "Success").text = str(result.success)
+            SubElement(metadata, "FullExport").text = str(full_export)  # NEW
+            SubElement(metadata, "ExportTimestamp").text = datetime.now().isoformat()
+            if result.error_message:
+                SubElement(metadata, "ErrorMessage").text = result.error_message
+
+            logger.debug(
+                f"Metadata created: {result.total_nodes} nodes, max depth {result.max_depth_reached}"
+            )
+
+            # Add namespaces section
+            namespaces = SubElement(root, "Namespaces")
+            for idx, uri in result.namespaces.items():
+                ns = SubElement(namespaces, "Namespace")
+                SubElement(ns, "Index").text = str(idx)
+                SubElement(ns, "URI").text = uri
+
+            logger.debug(f"Namespaces section created: {len(result.namespaces)} namespaces")
+
+            # Add nodes section with progress logging
+            nodes = SubElement(root, "Nodes")
+            nodes_added = 0
+            for node in result.nodes:
+                self._add_node_element(nodes, node, full_export)  # MODIFIED
+                nodes_added += 1
+
+                # Progress logging for large exports
+                if nodes_added % 100 == 0:
+                    logger.debug(f"Progress: {nodes_added}/{len(result.nodes)} nodes added")
+
+            logger.debug(f"All {nodes_added} nodes added to XML structure")
 
             # Create tree and write to file with indentation
             logger.debug(f"Writing XML to file: {output_path}")
@@ -51,35 +86,32 @@ class XmlExportStrategy(ExportStrategy):
 
             tree.write(
                 output_path,
-                encoding='utf-8',
+                encoding="utf-8",
                 xml_declaration=True,
             )
 
             file_size = output_path.stat().st_size
             logger.debug(f"XML file written successfully: {file_size:,} bytes")
 
-            return output_path
-
         except OSError as e:
             error_msg = f"Failed to write XML file: {type(e).__name__}: {str(e)}"
             logger.error(error_msg)
             raise OSError(error_msg) from e
         except Exception as e:
-            error_msg = f"XML export failed: {type(e).__name__}: {str(e)}"
-            logger.error(error_msg)
+            logger.error(f"XML export failed: {type(e).__name__}: {str(e)}")
             raise
 
-    def node_to_element(self, node: OpcUaNode, full_export: bool = False) -> Element:
-        """Convert an OpcUaNode to an XML element.
+    def _add_node_element(
+        self, parent: Element, node: OpcUaNode, full_export: bool = False  # NEW
+    ) -> None:
+        """Add a node as XML element with all attributes.
 
         Args:
-            node: OpcUaNode to convert
+            parent: Parent XML element
+            node: OpcUaNode to add
             full_export: If True, include all OPC UA extended attributes
-
-        Returns:
-            XML element representing the node
         """
-        node_elem = Element("Node")
+        node_elem = SubElement(parent, "Node")
 
         # Base attributes
         SubElement(node_elem, "NodeId").text = node.node_id
@@ -122,11 +154,11 @@ class XmlExportStrategy(ExportStrategy):
             if node.user_executable is not None:
                 SubElement(node_elem, "UserExecutable").text = str(node.user_executable)
             if node.minimum_sampling_interval is not None:
-                SubElement(node_elem, "MinimumSamplingInterval").text = str(node.minimum_sampling_interval)
+                SubElement(node_elem, "MinimumSamplingInterval").text = str(
+                    node.minimum_sampling_interval
+                )
             if node.historizing is not None:
                 SubElement(node_elem, "Historizing").text = str(node.historizing)
-
-        return node_elem
 
     def get_file_extension(self) -> str:
         """Get XML file extension."""

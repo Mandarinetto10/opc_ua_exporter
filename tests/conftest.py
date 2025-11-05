@@ -35,11 +35,9 @@ def mock_client() -> MagicMock:
     default_node.get_children = AsyncMock(return_value=[])
 
     client.get_node = MagicMock(return_value=default_node)
-    client.get_namespace_array = AsyncMock(return_value=[
-        "http://opcfoundation.org/UA/",
-        "urn:test:server",
-        "urn:custom:namespace"
-    ])
+    client.get_namespace_array = AsyncMock(
+        return_value=["http://opcfoundation.org/UA/", "urn:test:server", "urn:custom:namespace"]
+    )
     return client
 
 
@@ -176,6 +174,7 @@ def mock_node_with_children(mock_node: AsyncMock, mock_variable_node: AsyncMock)
 @pytest.fixture
 def mock_ua_status_error() -> type[ua.UaStatusCodeError]:
     """Create a mock UaStatusCodeError class."""
+
     class MockUaStatusCodeError(Exception):
         def __init__(self, code: Any):
             self.code = code
@@ -190,10 +189,7 @@ def sample_browse_result():
     from opc_browser.models import BrowseResult, OpcUaNode
 
     result = BrowseResult()
-    result.namespaces = {
-        0: "http://opcfoundation.org/UA/",
-        1: "urn:test:server"
-    }
+    result.namespaces = {0: "http://opcfoundation.org/UA/", 1: "urn:test:server"}
 
     # Add root node
     root = OpcUaNode(
@@ -203,7 +199,7 @@ def sample_browse_result():
         node_class="Object",
         depth=0,
         namespace_index=0,
-        parent_id=None
+        parent_id=None,
     )
     result.add_node(root)
 
@@ -215,7 +211,7 @@ def sample_browse_result():
         node_class="Object",
         depth=1,
         namespace_index=0,
-        parent_id="i=84"
+        parent_id="i=84",
     )
     result.add_node(objects)
 
@@ -229,7 +225,7 @@ def sample_browse_result():
         value=23.5,
         depth=2,
         namespace_index=2,
-        parent_id="i=85"
+        parent_id="i=85",
     )
     result.add_node(var)
 

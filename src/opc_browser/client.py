@@ -25,16 +25,19 @@ from loguru import logger
 
 class OpcUaClientError(Exception):
     """Base exception for OPC UA client errors."""
+
     pass
 
 
 class SecurityConfigurationError(OpcUaClientError):
     """Raised when security configuration is invalid or incomplete."""
+
     pass
 
 
 class ConnectionError(OpcUaClientError):
     """Raised when connection to OPC UA server fails."""
+
     pass
 
 
@@ -65,13 +68,13 @@ class OpcUaClient:
 
     Examples:
         Basic connection without security:
-            >>> async with OpcUaClient(server_url="opc.tcp://localhost:4840") as client:
+            >>> async with OpcUaClient(server_url="opc.tcp://localhost:48010") as client:
             ...     opcua_client = client.get_client()
             ...     # Use opcua_client for operations
 
         Secure connection with certificates:
             >>> async with OpcUaClient(
-            ...     server_url="opc.tcp://server:4840",
+            ...     server_url="opc.tcp://server:48010",
             ...     username="admin",
             ...     password="password",
             ...     security_policy="Basic256Sha256",
@@ -118,7 +121,7 @@ class OpcUaClient:
         """Initialize OPC UA client with connection parameters.
 
         Args:
-            server_url: OPC UA server endpoint (e.g., opc.tcp://localhost:4840).
+            server_url: OPC UA server endpoint (e.g., opc.tcp://localhost:48010).
             username: Username for authentication (optional).
             password: Password for authentication (optional).
             security_policy: Security policy name (default: "None").
@@ -204,9 +207,7 @@ class OpcUaClient:
                 server_status_node = self.client.get_node(ua.ObjectIds.Server_ServerStatus)
                 server_state = await server_status_node.read_value()
                 state_name: str = (
-                    server_state.State.name
-                    if hasattr(server_state, "State")
-                    else "Running"
+                    server_state.State.name if hasattr(server_state, "State") else "Running"
                 )
                 logger.success(f"✅ Connected to '{server_info.Name}' (State: {state_name})")
             except Exception:
@@ -257,14 +258,10 @@ class OpcUaClient:
             )
 
         if not self.certificate_path.exists():
-            raise SecurityConfigurationError(
-                f"Certificate file not found: {self.certificate_path}"
-            )
+            raise SecurityConfigurationError(f"Certificate file not found: {self.certificate_path}")
 
         if not self.private_key_path.exists():
-            raise SecurityConfigurationError(
-                f"Private key file not found: {self.private_key_path}"
-            )
+            raise SecurityConfigurationError(f"Private key file not found: {self.private_key_path}")
 
         policy_class: type[Any] = self.SECURITY_POLICY_MAP[self.security_policy]
         mode: MessageSecurityMode = self.SECURITY_MODE_MAP[self.security_mode]
@@ -276,9 +273,7 @@ class OpcUaClient:
                 private_key=str(self.private_key_path),
                 mode=mode,
             )
-            logger.debug(
-                f"Security configured: {self.security_policy} with {self.security_mode}"
-            )
+            logger.debug(f"Security configured: {self.security_policy} with {self.security_mode}")
         except Exception as e:
             raise SecurityConfigurationError(
                 f"Failed to configure security: {type(e).__name__}: {str(e)}"
@@ -303,9 +298,7 @@ class OpcUaClient:
                 else:
                     # code is an integer StatusCode
                     error_code = (
-                        f"0x{error.code:08X}"
-                        if isinstance(error.code, int)
-                        else str(error.code)
+                        f"0x{error.code:08X}" if isinstance(error.code, int) else str(error.code)
                     )
             else:
                 error_code = "Unknown"
@@ -317,14 +310,9 @@ class OpcUaClient:
         # Comprehensive hints based on OPC UA specification error codes
         hints: dict[str, str] = {
             # Authentication & Authorization Errors
-            "BadIdentityTokenRejected": (
-                "Check username/password and server user permissions"
-            ),
-            "BadUserAccessDenied": (
-                "User doesn't have permission to access this resource"
-            ),
+            "BadIdentityTokenRejected": ("Check username/password and server user permissions"),
+            "BadUserAccessDenied": ("User doesn't have permission to access this resource"),
             "BadIdentityTokenInvalid": "Identity token is malformed or invalid",
-
             # Security & Certificate Errors
             "BadCertificateUriInvalid": (
                 "Certificate Application URI doesn't match client configuration"
@@ -333,35 +321,23 @@ class OpcUaClient:
                 "Server rejected the certificate - ensure it's in server's trust list"
             ),
             "BadCertificateInvalid": "Certificate is invalid, expired, or not trusted",
-            "BadSecurityModeRejected": (
-                "Server doesn't support the requested security mode"
-            ),
-
+            "BadSecurityModeRejected": ("Server doesn't support the requested security mode"),
             # Connection & Session Errors
             "BadSessionIdInvalid": "Session expired or was closed by server",
             "BadSessionClosed": "Session was closed - reconnection required",
-            "BadTimeout": (
-                "Connection timeout - check network connectivity and server status"
-            ),
+            "BadTimeout": ("Connection timeout - check network connectivity and server status"),
             "BadConnectionClosed": "Connection was closed unexpectedly",
             "BadTcpEndpointUrlInvalid": "Server URL format is invalid",
-
             # Node & Browse Errors
             "BadNodeIdUnknown": "Node does not exist in the server address space",
             "BadNodeIdInvalid": "Node ID format is invalid",
             "BadBrowseDirectionInvalid": "Browse direction is not supported",
-
             # Server Errors
-            "BadUnexpectedError": (
-                "Server encountered an unexpected error - check server logs"
-            ),
+            "BadUnexpectedError": ("Server encountered an unexpected error - check server logs"),
             "BadServerNotConnected": "Not connected to server",
             "BadServerHalted": "Server is halted or shutting down",
-
             # Request Errors
-            "BadTooManyOperations": (
-                "Too many operations requested - reduce batch size"
-            ),
+            "BadTooManyOperations": ("Too many operations requested - reduce batch size"),
             "BadNothingToDo": "No operations to perform",
         }
 

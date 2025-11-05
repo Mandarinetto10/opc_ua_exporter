@@ -1,0 +1,16 @@
+                                Name   Anys   Exprs   Coverage
+--------------------------------------------------------------
+                         opc_browser      0       2    100.00%
+                 opc_browser.browser    258    1244     79.26%
+                     opc_browser.cli     80    1073     92.54%
+                  opc_browser.client     80     475     83.16%
+                opc_browser.exporter      0     358    100.00%
+           opc_browser.generate_cert      4     360     98.89%
+                  opc_browser.models     23     572     95.98%
+              opc_browser.strategies      0       1    100.00%
+         opc_browser.strategies.base      0     111    100.00%
+ opc_browser.strategies.csv_strategy      2     167     98.80%
+opc_browser.strategies.json_strategy      3     217     98.62%
+ opc_browser.strategies.xml_strategy      1     458     99.78%
+--------------------------------------------------------------
+                               Total    451    5038     91.05%
