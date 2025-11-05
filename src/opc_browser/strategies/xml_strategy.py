@@ -13,34 +13,20 @@ from .base import ExportStrategy
 
 
 class XmlExportStrategy(ExportStrategy):
-    """
-    Exports browse results to XML format.
+    """XML export strategy for OPC UA nodes."""
 
-    XML format is ideal for:
-    - Enterprise systems and SOAP services
-    - Configuration files
-    - Industry standard data exchange
-    - Schema validation and transformation
-    """
-
-    async def export(self, result: BrowseResult, output_path: Path) -> None:
-        """
-        Export nodes to XML file with pretty formatting.
-
-        Creates a well-structured XML document with:
-        - Metadata section with statistics
-        - Namespaces section with index and URI
-        - Nodes section with complete node information
-        - Proper indentation for readability
-        - ISO 8601 timestamp formatting
+    async def export(
+        self, 
+        result: BrowseResult, 
+        output_path: Path | None,
+        full_export: bool = False  # NEW
+    ) -> Path:
+        """Export nodes to XML file with pretty formatting.
 
         Args:
             result: BrowseResult to export
             output_path: Path to output XML file
-
-        Raises:
-            ValueError: If result is invalid or empty
-            IOError: If file cannot be written
+            full_export: If True, include all OPC UA extended attributes
         """
         logger.debug(f"XML export started: {len(result.nodes)} nodes to {output_path}")
 
@@ -50,42 +36,13 @@ class XmlExportStrategy(ExportStrategy):
         logger.info(f"Exporting {len(result.nodes)} nodes to XML: {output_path}")
 
         try:
-            # Create root element
-            logger.debug("Building XML structure...")
-            root = Element("OpcUaAddressSpace")
-
-            # Add metadata section
-            metadata = SubElement(root, "Metadata")
-            SubElement(metadata, "TotalNodes").text = str(result.total_nodes)
-            SubElement(metadata, "MaxDepthReached").text = str(result.max_depth_reached)
-            SubElement(metadata, "Success").text = str(result.success)
-            SubElement(metadata, "ExportTimestamp").text = datetime.now().isoformat()
-            if result.error_message:
-                SubElement(metadata, "ErrorMessage").text = result.error_message
-
-            logger.debug(f"Metadata created: {result.total_nodes} nodes, max depth {result.max_depth_reached}")
-
-            # Add namespaces section
-            namespaces = SubElement(root, "Namespaces")
-            for idx, uri in result.namespaces.items():
-                ns = SubElement(namespaces, "Namespace")
-                SubElement(ns, "Index").text = str(idx)
-                SubElement(ns, "URI").text = uri
-
-            logger.debug(f"Namespaces section created: {len(result.namespaces)} namespaces")
-
-            # Add nodes section with progress logging
-            nodes = SubElement(root, "Nodes")
-            nodes_added = 0
+            # Only export nodes, no summary/statistics/namespaces
+            root = Element("OpcUaNodes")
             for node in result.nodes:
-                self._add_node_element(nodes, node)
-                nodes_added += 1
+                node_elem = self.node_to_element(node)
+                root.append(node_elem)
 
-                # Progress logging for large exports
-                if nodes_added % 100 == 0:
-                    logger.debug(f"Progress: {nodes_added}/{len(result.nodes)} nodes added")
-
-            logger.debug(f"All {nodes_added} nodes added to XML structure")
+            logger.debug(f"All {len(result.nodes)} nodes added to XML structure")
 
             # Create tree and write to file with indentation
             logger.debug(f"Writing XML to file: {output_path}")
@@ -101,6 +58,8 @@ class XmlExportStrategy(ExportStrategy):
             file_size = output_path.stat().st_size
             logger.debug(f"XML file written successfully: {file_size:,} bytes")
 
+            return output_path
+
         except OSError as e:
             error_msg = f"Failed to write XML file: {type(e).__name__}: {str(e)}"
             logger.error(error_msg)
@@ -110,17 +69,19 @@ class XmlExportStrategy(ExportStrategy):
             logger.error(error_msg)
             raise
 
-    def _add_node_element(self, parent: Element, node: OpcUaNode) -> None:
-        """
-        Add a node as XML element with all attributes.
+    def node_to_element(self, node: OpcUaNode, full_export: bool = False) -> Element:
+        """Convert an OpcUaNode to an XML element.
 
         Args:
-            parent: Parent XML element
-            node: OpcUaNode to add
-        """
-        node_elem = SubElement(parent, "Node")
+            node: OpcUaNode to convert
+            full_export: If True, include all OPC UA extended attributes
 
-        # Add node attributes as child elements
+        Returns:
+            XML element representing the node
+        """
+        node_elem = Element("Node")
+
+        # Base attributes
         SubElement(node_elem, "NodeId").text = node.node_id
         SubElement(node_elem, "BrowseName").text = node.browse_name
         SubElement(node_elem, "DisplayName").text = node.display_name
@@ -141,6 +102,31 @@ class XmlExportStrategy(ExportStrategy):
 
         if node.timestamp:
             SubElement(node_elem, "Timestamp").text = node.timestamp.isoformat()
+
+        # Extended attributes (full export only)
+        if full_export:
+            if node.description:
+                SubElement(node_elem, "Description").text = node.description
+            if node.access_level:
+                SubElement(node_elem, "AccessLevel").text = node.access_level
+            if node.user_access_level:
+                SubElement(node_elem, "UserAccessLevel").text = node.user_access_level
+            if node.write_mask is not None:
+                SubElement(node_elem, "WriteMask").text = str(node.write_mask)
+            if node.user_write_mask is not None:
+                SubElement(node_elem, "UserWriteMask").text = str(node.user_write_mask)
+            if node.event_notifier is not None:
+                SubElement(node_elem, "EventNotifier").text = str(node.event_notifier)
+            if node.executable is not None:
+                SubElement(node_elem, "Executable").text = str(node.executable)
+            if node.user_executable is not None:
+                SubElement(node_elem, "UserExecutable").text = str(node.user_executable)
+            if node.minimum_sampling_interval is not None:
+                SubElement(node_elem, "MinimumSamplingInterval").text = str(node.minimum_sampling_interval)
+            if node.historizing is not None:
+                SubElement(node_elem, "Historizing").text = str(node.historizing)
+
+        return node_elem
 
     def get_file_extension(self) -> str:
         """Get XML file extension."""

@@ -174,10 +174,9 @@ Examples:
         help="Include current values for Variable nodes",
     )
     export_parser.add_argument(
-        "--namespace-filter",
-        type=int,
-        metavar="INDEX",
-        help="Export only nodes from specific namespace index (e.g., --namespace-filter 2)",
+        "--full-export",
+        action="store_true",
+        help="Export all OPC UA extended attributes (Description, AccessLevel, etc.)",
     )
 
     cert_parser = subparsers.add_parser(
@@ -401,8 +400,7 @@ async def execute_export(args: argparse.Namespace) -> int:
     logger.info(f"Output File:      {output_path if output_path else 'Auto-generated'}")
     logger.info(f"Include Values:   {args.include_values}")
     logger.info(f"Namespaces Only:  {args.namespaces_only}")
-    if hasattr(args, 'namespace_filter') and args.namespace_filter is not None:
-        logger.info(f"Namespace Filter: {args.namespace_filter}")
+    logger.info(f"Full Export:      {args.full_export}")
     logger.info(f"Security Policy:  {args.security}")
     if args.security != "None":
         logger.info(f"Security Mode:    {args.mode}")
@@ -423,14 +421,12 @@ async def execute_export(args: argparse.Namespace) -> int:
             certificate_path=args.cert,
             private_key_path=args.key,
         ) as client:
-            namespace_filter = getattr(args, 'namespace_filter', None)
-
             browser: OpcUaBrowser = OpcUaBrowser(
                 client=client.get_client(),
                 max_depth=args.depth,
                 include_values=args.include_values,
                 namespaces_only=args.namespaces_only,
-                namespace_filter=namespace_filter,
+                full_export=args.full_export,
             )
 
             logger.info("Starting address space browse...")
@@ -448,7 +444,10 @@ async def execute_export(args: argparse.Namespace) -> int:
             logger.info(f"Initializing {export_format.upper()} exporter...")
 
             try:
-                exporter: Exporter = Exporter(export_format=export_format)
+                exporter: Exporter = Exporter(
+                    export_format=export_format,
+                    full_export=args.full_export
+                )
                 final_output_path: Path = await exporter.export(result, output_path)
 
                 file_size = final_output_path.stat().st_size

@@ -24,26 +24,18 @@ class CsvExportStrategy(ExportStrategy):
     special characters (semicolons, commas, quotes) for Excel compatibility.
     """
 
-    async def export(self, result: BrowseResult, output_path: Path) -> None:
-        """
-        Export nodes to CSV file with proper quoting for Excel compatibility.
-
-        Uses comma (,) as delimiter and automatically quotes fields containing:
-        - Semicolons (;) - common in OPC UA NodeIds like "ns=2;s=Studio"
-        - Commas (,)
-        - Double quotes (")
-        - Newlines
-
-        This ensures Excel (both English and localized versions) correctly
-        interprets all columns without splitting NodeIds incorrectly.
+    async def export(
+        self, 
+        result: BrowseResult, 
+        output_path: Path,
+        full_export: bool = False  # NEW
+    ) -> None:
+        """Export nodes to CSV file with proper quoting for Excel compatibility.
 
         Args:
             result: BrowseResult to export
             output_path: Path to output CSV file
-
-        Raises:
-            ValueError: If result is invalid or empty
-            IOError: If file cannot be written
+            full_export: If True, include all OPC UA extended attributes
         """
         logger.debug(f"CSV export started: {len(result.nodes)} nodes to {output_path}")
 
@@ -54,8 +46,6 @@ class CsvExportStrategy(ExportStrategy):
 
         try:
             with open(output_path, 'w', newline='', encoding='utf-8-sig') as csvfile:
-                # Use comma as delimiter with QUOTE_MINIMAL for Excel compatibility
-                # utf-8-sig adds BOM for Excel to recognize UTF-8 encoding
                 writer = csv.writer(
                     csvfile,
                     delimiter=',',
@@ -64,38 +54,20 @@ class CsvExportStrategy(ExportStrategy):
                 )
 
                 # Write header
-                headers = result.nodes[0].get_csv_headers()
+                headers = result.nodes[0].get_csv_headers(full_export)  # MODIFIED
                 writer.writerow(headers)
-                logger.debug(f"CSV headers written: {len(headers)} columns (delimiter: comma)")
+                logger.debug(f"CSV headers written: {len(headers)} columns")
 
                 # Write data rows
                 nodes_written = 0
                 for node in result.nodes:
-                    writer.writerow(node.to_csv_row())
+                    writer.writerow(node.to_csv_row(full_export))  # MODIFIED
                     nodes_written += 1
 
-                    # Progress logging for large exports
                     if nodes_written % 100 == 0:
                         logger.debug(f"Progress: {nodes_written}/{len(result.nodes)} nodes written")
 
                 logger.debug(f"All {nodes_written} node rows written")
-
-                # Write summary rows
-                writer.writerow([])  # Empty row
-                writer.writerow(["# Summary"])
-                writer.writerow(["Total Nodes", result.total_nodes])
-                writer.writerow(["Max Depth", result.max_depth_reached])
-                writer.writerow(["Namespaces", len(result.namespaces)])
-                logger.debug("Summary section written")
-
-                # Write namespace information
-                if result.namespaces:
-                    writer.writerow([])
-                    writer.writerow(["# Namespaces"])
-                    writer.writerow(["Index", "URI"])
-                    for idx, uri in result.namespaces.items():
-                        writer.writerow([idx, uri])
-                    logger.debug(f"Namespace information written: {len(result.namespaces)} namespaces")
 
             file_size = output_path.stat().st_size
             logger.debug(f"CSV file written successfully: {file_size:,} bytes")

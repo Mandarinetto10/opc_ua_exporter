@@ -34,6 +34,17 @@ class OpcUaNode:
         namespace_index: Namespace index of the node (0 for OPC UA base namespace).
         is_namespace_node: True if this node represents namespace metadata.
         timestamp: Timestamp when the node data was captured.
+        full_path: OPC UA hierarchical path.
+        description: Textual description of the node (full export only).
+        access_level: Read/write permissions for Variable nodes (full export only).
+        user_access_level: User-specific permissions (full export only).
+        write_mask: Modifiable attributes mask (full export only).
+        user_write_mask: User-specific modifiable attributes mask (full export only).
+        event_notifier: Event support flags for Object nodes (full export only).
+        executable: Whether Method is executable (full export only).
+        user_executable: Whether user can execute Method (full export only).
+        minimum_sampling_interval: Minimum sampling interval in ms (full export only).
+        historizing: Whether Variable is being historized (full export only).
     """
 
     node_id: str
@@ -47,7 +58,19 @@ class OpcUaNode:
     namespace_index: int = 0
     is_namespace_node: bool = False
     timestamp: datetime | None = field(default_factory=datetime.now)
-    full_path: str | None = None  # NEW: OPC UA hierarchical path
+    full_path: str | None = None
+    
+    # Full export fields (OPC UA extended attributes)
+    description: str | None = None
+    access_level: str | None = None
+    user_access_level: str | None = None
+    write_mask: int | None = None
+    user_write_mask: int | None = None
+    event_notifier: int | None = None
+    executable: bool | None = None
+    user_executable: bool | None = None
+    minimum_sampling_interval: float | None = None
+    historizing: bool | None = None
 
     def __str__(self) -> str:
         """Return simple string representation with indentation.
@@ -127,8 +150,11 @@ class OpcUaNode:
         return " ".join(parts)
 
     @staticmethod
-    def get_csv_headers() -> list[str]:
+    def get_csv_headers(full_export: bool = False) -> list[str]:
         """Return CSV column headers for OpcUaNode export.
+
+        Args:
+            full_export: If True, include all OPC UA extended attributes.
 
         Returns:
             List of header names matching the order of to_csv_row().
@@ -150,11 +176,11 @@ class OpcUaNode:
                 'Timestamp'
             ]
         """
-        return [
+        base_headers = [
             "NodeId",
             "BrowseName",
             "DisplayName",
-            "FullPath",  # NEW
+            "FullPath",
             "NodeClass",
             "DataType",
             "Value",
@@ -164,12 +190,29 @@ class OpcUaNode:
             "IsNamespaceNode",
             "Timestamp",
         ]
+        
+        if full_export:
+            extended_headers = [
+                "Description",
+                "AccessLevel",
+                "UserAccessLevel",
+                "WriteMask",
+                "UserWriteMask",
+                "EventNotifier",
+                "Executable",
+                "UserExecutable",
+                "MinimumSamplingInterval",
+                "Historizing",
+            ]
+            return base_headers + extended_headers
+        
+        return base_headers
 
-    def to_csv_row(self) -> list[str]:
+    def to_csv_row(self, full_export: bool = False) -> list[str]:
         """Convert node to CSV row with string values for all fields.
 
-        Handles asyncua-specific types by extracting the actual value.
-        All fields are converted to strings suitable for CSV export.
+        Args:
+            full_export: If True, include all OPC UA extended attributes.
 
         Returns:
             List of string values representing a CSV row.
@@ -200,11 +243,11 @@ class OpcUaNode:
             else:
                 value_str = str(self.value)
 
-        return [
+        base_row = [
             self.node_id,
             self.browse_name,
             self.display_name,
-            self.full_path or "",  # NEW
+            self.full_path or "",
             self.node_class,
             self.data_type or "",
             value_str,
@@ -214,36 +257,36 @@ class OpcUaNode:
             str(self.is_namespace_node),
             self.timestamp.isoformat() if self.timestamp else "",
         ]
+        
+        if full_export:
+            extended_row = [
+                self.description or "",
+                self.access_level or "",
+                self.user_access_level or "",
+                str(self.write_mask) if self.write_mask is not None else "",
+                str(self.user_write_mask) if self.user_write_mask is not None else "",
+                str(self.event_notifier) if self.event_notifier is not None else "",
+                str(self.executable) if self.executable is not None else "",
+                str(self.user_executable) if self.user_executable is not None else "",
+                str(self.minimum_sampling_interval) if self.minimum_sampling_interval is not None else "",
+                str(self.historizing) if self.historizing is not None else "",
+            ]
+            return base_row + extended_row
+        
+        return base_row
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, full_export: bool = False) -> dict[str, Any]:
         """Convert node to dictionary for JSON/XML serialization.
 
-        Handles asyncua-specific types (DataValue, Variant) by extracting
-        the actual value. Converts datetime objects to ISO format strings.
+        Args:
+            full_export: If True, include all OPC UA extended attributes.
 
         Returns:
-            Dictionary with all node attributes, suitable for JSON serialization.
-
-        Examples:
-            >>> node.to_dict()
-            {
-                'node_id': 'ns=2;i=1001',
-                'browse_name': 'Temperature',
-                'display_name': 'Temperature Sensor',
-                'node_class': 'Variable',
-                'data_type': 'Double',
-                'value': '23.5',
-                'parent_id': 'ns=2;i=1000',
-                'depth': 2,
-                'namespace_index': 2,
-                'is_namespace_node': False,
-                'timestamp': '2025-01-04T14:30:22.123456'
-            }
+            Dictionary with node attributes.
         """
         value_serialized: str | None = None
         if self.value is not None:
             if isinstance(self.value, (ua.DataValue, ua.Variant)):
-                # Extract value from asyncua wrapper types
                 value_serialized = str(
                     self.value.Value if hasattr(self.value, "Value") else self.value
                 )
@@ -252,11 +295,11 @@ class OpcUaNode:
             else:
                 value_serialized = str(self.value)
 
-        return {
+        base_dict = {
             "node_id": self.node_id,
             "browse_name": self.browse_name,
             "display_name": self.display_name,
-            "full_path": self.full_path,  # NEW
+            "full_path": self.full_path,
             "node_class": self.node_class,
             "data_type": self.data_type,
             "value": value_serialized,
@@ -266,6 +309,23 @@ class OpcUaNode:
             "is_namespace_node": self.is_namespace_node,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
         }
+        
+        if full_export:
+            extended_dict = {
+                "description": self.description,
+                "access_level": self.access_level,
+                "user_access_level": self.user_access_level,
+                "write_mask": self.write_mask,
+                "user_write_mask": self.user_write_mask,
+                "event_notifier": self.event_notifier,
+                "executable": self.executable,
+                "user_executable": self.user_executable,
+                "minimum_sampling_interval": self.minimum_sampling_interval,
+                "historizing": self.historizing,
+            }
+            base_dict.update(extended_dict)
+        
+        return base_dict
 
 
 @dataclass

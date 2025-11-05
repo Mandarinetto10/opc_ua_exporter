@@ -24,7 +24,12 @@ class JsonExportStrategy(ExportStrategy):
     - Hierarchical data representation
     """
 
-    async def export(self, result: BrowseResult, output_path: Path) -> None:
+    async def export(
+        self, 
+        result: BrowseResult, 
+        output_path: Path,
+        full_export: bool = False  # NEW
+    ) -> None:
         """
         Export nodes to JSON file with pretty formatting.
 
@@ -37,10 +42,7 @@ class JsonExportStrategy(ExportStrategy):
         Args:
             result: BrowseResult to export
             output_path: Path to output JSON file
-
-        Raises:
-            ValueError: If result is invalid or empty
-            IOError: If file cannot be written
+            full_export: If True, include all OPC UA extended attributes
         """
         logger.debug(f"JSON export started: {len(result.nodes)} nodes to {output_path}")
 
@@ -59,6 +61,7 @@ class JsonExportStrategy(ExportStrategy):
                     "success": result.success,
                     "error_message": result.error_message,
                     "export_timestamp": datetime.now().isoformat(),
+                    "full_export": full_export,  # NEW
                 },
                 "namespaces": [
                     {"index": idx, "uri": uri}
@@ -72,7 +75,7 @@ class JsonExportStrategy(ExportStrategy):
             # Convert nodes to dictionaries with progress logging
             nodes_converted = 0
             for node in result.nodes:
-                export_data["nodes"].append(node.to_dict())
+                export_data["nodes"].append(node.to_dict(full_export))  # MODIFIED
                 nodes_converted += 1
 
                 # Progress logging for large exports

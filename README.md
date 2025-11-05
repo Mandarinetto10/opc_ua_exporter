@@ -303,8 +303,8 @@ python -m opc_browser.cli export [OPTIONS]
 | `--format` | `-f` | [See export formats](#format) | `csv` |
 | `--output` | `-o` | Output file path | `export/opcua_export_<timestamp>.<format>` |
 | `--namespaces-only` | - | Export only namespace-related nodes | `False` |
-| `--namespace-filter` | - | [Filter by namespace index](#namespace-filter) (e.g., `2`) | `None` |
 | `--include-values` | - | Include current variable values | `False` |
+
 
 ### Format
 
@@ -318,6 +318,8 @@ Export format determines the structure and file type of the exported data.
 | `json` | Web apps, APIs | Pretty-printed, ISO timestamps, hierarchical structure |
 | `xml` | Enterprise systems | Schema-compliant, indented, metadata sections |
 
+---
+
 **Usage:**
 ```bash
 # Export as JSON
@@ -327,162 +329,319 @@ python -m opc_browser.cli export -s opc.tcp://server:4840 --format json
 python -m opc_browser.cli export -s opc.tcp://server:4840 --format xml -o mydata.xml
 ```
 
-### Namespace Filter
+### Filtering by Namespace
 
-Filter nodes by namespace index to export only application-specific data.
+**Use `--node-id` to start browsing from a specific namespace node:**
 
-**Why Use Namespace Filtering?**
-- Exclude OPC UA standard nodes (namespace 0)
-- Focus on application-specific nodes (namespace 2, 3, etc.)
-- Reduce export file size
-- Improve data relevance
-
-#### Step 1: Identify Namespace Index
-
-**Option A - Quick Browse:**
-```bash
-python -m opc_browser.cli browse -s opc.tcp://localhost:48010 -u admin -p pass -d 1
-```
-
-**Example Output:**
-```
-🌐 NAMESPACES:
-   [0] http://opcfoundation.org/UA/
-   [1] urn:yourhostname:Studio:OpcUaServer
-   [2] urn:Studio
-       └─ 70 nodes
-```
-
-**Option B - Full Export and Analysis:**
-```bash
-python -m opc_browser.cli export -s opc.tcp://localhost:48010 -f csv -o temp.csv
-# Check "# Namespaces" section at end of CSV
-```
-
-#### Step 2: Apply Namespace Filter
-
-**Usage:**
-```bash
-# Export only namespace 2 nodes
-python -m opc_browser.cli export -s opc.tcp://localhost:48010 -u Admin -p 1 --namespace-filter 2 -d 10 -f csv -o filtered_export.csv
-```
-
-**Result:**
-- ✅ Browses entire address space (depth 10)
-- ✅ Filters nodes to only namespace index 2
-- ✅ Exports filtered subset to CSV
-- ✅ Summary shows actual filtered node count
-
-### Export Examples
-
-#### Example 1: Basic CSV Export
+#### Step 1: Identify the Namespace Node
 
 ```bash
-python -m opc_browser.cli export -s opc.tcp://localhost:4840
+# Browse with depth 2 to see namespace structure
+python -m opc_browser.cli browse -s opc.tcp://localhost:48010 -d 2
 ```
 
-**Output:** `export/opcua_export_20250104_143022.csv`
+## Exported Fields Reference
 
-**CSV Structure:**
-- Headers: NodeId, BrowseName, DisplayName, FullPath, NodeClass, DataType, Value, ParentId, Depth, NamespaceIndex, IsNamespaceNode, Timestamp
-- Data rows with all node information
-- Summary section with statistics
-- Namespace section with index-to-URI mapping
+All export formats contain the same information, organized differently based on the format.
 
-#### Example 2: JSON Export with Custom Filename
+### Node Fields
 
-```bash
-python -m opc_browser.cli export -s opc.tcp://localhost:4840 -f json -o my_server.json
+Each OPC UA node is exported with the following fields:
+
+| Field | Type | Description | Example | Always Present |
+|-------|------|-------------|---------|----------------|
+| **NodeId** | String | Unique identifier for the node | `ns=2;s=Studio` | ✅ Yes |
+| **BrowseName** | String | Qualified name used for browsing | `Studio` | ✅ Yes |
+| **DisplayName** | String | Human-readable name for UI display | `Studio Control` | ✅ Yes |
+| **FullPath** | String | Complete hierarchical path from root | `Studio/Tags/System/Date` | ✅ Yes |
+| **NodeClass** | String | OPC UA node classification | `Object`, `Variable`, `Method` | ✅ Yes |
+| **DataType** | String | Data type for Variable nodes | `String`, `Int32`, `Double` | ❌ Variables only |
+| **Value** | Any | Current value (if `--include-values`) | `23.5`, `"Hello"`, `true` | ❌ Optional |
+| **ParentId** | String | NodeId of parent node | `ns=2;s=Studio.Tags` | ❌ Root nodes = null |
+| **Depth** | Integer | Hierarchy depth level (0 = root) | `0`, `1`, `2`, `3` | ✅ Yes |
+| **NamespaceIndex** | Integer | Namespace index (0 = OPC UA base) | `0`, `1`, `2` | ✅ Yes |
+| **IsNamespaceNode** | Boolean | True if node is namespace metadata | `true`, `false` | ✅ Yes |
+| **Timestamp** | ISO 8601 | When the node data was captured | `2025-11-05T09:34:35.737218` | ✅ Yes |
+
+### Metadata Fields
+
+Export metadata included in all formats:
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| **TotalNodes** | Total number of nodes exported | `8931` |
+| **MaxDepthReached** | Maximum hierarchy depth discovered | `5` |
+| **Success** | Whether browse operation succeeded | `true` |
+| **ErrorMessage** | Error details if browse failed | `null` or error text |
+| **ExportTimestamp** | When the export was created | `2025-11-05T09:34:59.198601` |
+
+### Namespace Fields
+
+Namespace definitions included in all formats:
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| **Index** | Namespace numeric index | `0`, `1`, `2` |
+| **URI** | Namespace URI identifier | `http://opcfoundation.org/UA/` |
+
+---
+
+## Format Examples
+
+### CSV Format
+
+**Structure:**
+- UTF-8 with BOM for Excel compatibility
+- Comma-delimited (`,`
+- Auto-quoted fields containing special characters
+- Summary section at bottom
+- Namespace table at bottom
+
+**Example:**
+```csv
+NodeId,BrowseName,DisplayName,FullPath,NodeClass,DataType,Value,ParentId,Depth,NamespaceIndex,IsNamespaceNode,Timestamp
+"ns=2;s=Studio",Studio,Studio,Studio,Object,,,0,2,False,2025-11-05T09:34:35.737218
+"ns=2;s=Studio.Tags",Tags,Tags,Studio/Tags,Object,,"ns=2;s=Studio",1,2,False,2025-11-05T09:34:35.738245
+"ns=2;s=Studio.Tags.System.Date",Date,Date,Studio/Tags/System/Date,Variable,String,,"ns=2;s=Studio.Tags.System",3,2,False,2025-11-05T09:34:35.744225
+
+# Summary
+Total Nodes,8931
+Max Depth,5
+Namespaces,3
+
+# Namespaces
+Index,URI
+0,http://opcfoundation.org/UA/
+1,urn:WSM-01153:Studio:OpcUaServer
+2,urn:Studio
 ```
 
-**JSON Structure:**
+**Best For:**
+- ✅ Excel/LibreOffice Calc analysis
+- ✅ SQL database import
+- ✅ Simple text processing
+- ✅ Quick data inspection
+
+---
+
+### JSON Format
+
+**Structure:**
+- Pretty-printed with 2-space indentation
+- ISO 8601 timestamps
+- Hierarchical object structure
+- Arrays for nodes and namespaces
+
+**Example:**
 ```json
 {
   "metadata": {
-    "total_nodes": 150,
-    "max_depth_reached": 3,
+    "total_nodes": 8931,
+    "max_depth_reached": 5,
     "success": true,
-    "export_timestamp": "2025-01-04T14:30:22.123456"
+    "error_message": null,
+    "export_timestamp": "2025-11-05T09:34:59.198601"
   },
   "namespaces": [
-    {"index": 0, "uri": "http://opcfoundation.org/UA/"},
-    {"index": 1, "uri": "urn:MyCompany:MyServer"}
+    {
+      "index": 0,
+      "uri": "http://opcfoundation.org/UA/"
+    },
+    {
+      "index": 2,
+      "uri": "urn:Studio"
+    }
   ],
   "nodes": [
     {
-      "node_id": "i=84",
-      "browse_name": "Root",
-      "display_name": "Root",
-      "full_path": "Root",
+      "node_id": "ns=2;s=Studio",
+      "browse_name": "Studio",
+      "display_name": "Studio",
+      "full_path": "Studio",
       "node_class": "Object",
+      "data_type": null,
+      "value": null,
+      "parent_id": null,
       "depth": 0,
-      "namespace_index": 0
+      "namespace_index": 2,
+      "is_namespace_node": false,
+      "timestamp": "2025-11-05T09:34:35.737218"
+    },
+    {
+      "node_id": "ns=2;s=Studio.Tags.System.Date",
+      "browse_name": "Date",
+      "display_name": "Date",
+      "full_path": "Studio/Tags/System/Date",
+      "node_class": "Variable",
+      "data_type": "String",
+      "value": null,
+      "parent_id": "ns=2;s=Studio.Tags.System",
+      "depth": 3,
+      "namespace_index": 2,
+      "is_namespace_node": false,
+      "timestamp": "2025-11-05T09:34:35.744225"
     }
   ]
 }
 ```
 
-#### Example 3: XML Export with Values
+**Best For:**
+- ✅ Web applications and REST APIs
+- ✅ JavaScript/TypeScript consumption
+- ✅ NoSQL databases (MongoDB, CouchDB)
+- ✅ Configuration files
+- ✅ Easy parsing in any language
 
-```bash
-python -m opc_browser.cli export -s opc.tcp://localhost:4840 -f xml -o complete_data.xml --include-values
-```
+---
 
-**XML Structure:**
+### XML Format
+
+**Structure:**
+- XML declaration with UTF-8 encoding
+- 2-space indentation for readability
+- Hierarchical element structure
+- Separate sections for metadata, namespaces, and nodes
+
+**Example:**
 ```xml
 <?xml version='1.0' encoding='utf-8'?>
 <OpcUaAddressSpace>
   <Metadata>
-    <TotalNodes>150</TotalNodes>
-    <MaxDepthReached>3</MaxDepthReached>
+    <TotalNodes>8931</TotalNodes>
+    <MaxDepthReached>5</MaxDepthReached>
     <Success>True</Success>
-    <ExportTimestamp>2025-01-04T14:30:22.123456</ExportTimestamp>
+    <ExportTimestamp>2025-11-05T09:34:31.634634</ExportTimestamp>
   </Metadata>
   <Namespaces>
     <Namespace>
       <Index>0</Index>
       <URI>http://opcfoundation.org/UA/</URI>
     </Namespace>
+    <Namespace>
+      <Index>2</Index>
+      <URI>urn:Studio</URI>
+    </Namespace>
   </Namespaces>
   <Nodes>
     <Node>
-      <NodeId>i=84</NodeId>
-      <BrowseName>Root</BrowseName>
-      <DisplayName>Root</DisplayName>
-      <FullPath>Root</FullPath>
+      <NodeId>ns=2;s=Studio</NodeId>
+      <BrowseName>Studio</BrowseName>
+      <DisplayName>Studio</DisplayName>
+      <FullPath>Studio</FullPath>
       <NodeClass>Object</NodeClass>
       <Depth>0</Depth>
-      <NamespaceIndex>0</NamespaceIndex>
+      <NamespaceIndex>2</NamespaceIndex>
+      <IsNamespaceNode>False</IsNamespaceNode>
+      <Timestamp>2025-11-05T09:34:11.816635</Timestamp>
+    </Node>
+    <Node>
+      <NodeId>ns=2;s=Studio.Tags.System.Date</NodeId>
+      <BrowseName>Date</BrowseName>
+      <DisplayName>Date</DisplayName>
+      <FullPath>Studio/Tags/System/Date</FullPath>
+      <NodeClass>Variable</NodeClass>
+      <DataType>String</DataType>
+      <ParentId>ns=2;s=Studio.Tags.System</ParentId>
+      <Depth>3</Depth>
+      <NamespaceIndex>2</NamespaceIndex>
+      <IsNamespaceNode>False</IsNamespaceNode>
+      <Timestamp>2025-11-05T09:34:11.821636</Timestamp>
     </Node>
   </Nodes>
 </OpcUaAddressSpace>
 ```
 
-#### Example 4: Namespace-Only Export
+**Best For:**
+- ✅ Enterprise integration (SAP, Oracle)
+- ✅ SOAP web services
+- ✅ Schema validation (XSD)
+- ✅ XSLT transformations
+- ✅ Legacy systems requiring XML
+
+---
+
+## Field Value Examples
+
+### NodeClass Values
+
+| Value | Description | Typical Attributes |
+|-------|-------------|-------------------|
+| `Object` | Organizational container | BrowseName, DisplayName |
+| `Variable` | Data holder with value | DataType, Value, AccessLevel |
+| `Method` | Executable function | InputArguments, OutputArguments |
+| `ObjectType` | Template for Objects | IsAbstract |
+| `VariableType` | Template for Variables | DataType |
+| `DataType` | Data type definition | IsAbstract |
+| `ReferenceType` | Relationship definition | IsAbstract, Symmetric |
+| `View` | Alternative organization | ContainsNoLoops |
+
+### DataType Values
+
+Common data types you'll see in exports:
+
+| DataType | Description | Example Values |
+|----------|-------------|----------------|
+| `Boolean` | True/False | `true`, `false` |
+| `Byte` | 8-bit unsigned | `0-255` |
+| `Int16` | 16-bit signed integer | `-32768` to `32767` |
+| `Int32` | 32-bit signed integer | `-2147483648` to `2147483647` |
+| `Int64` | 64-bit signed integer | Large integers |
+| `UInt16` | 16-bit unsigned | `0` to `65535` |
+| `UInt32` | 32-bit unsigned | `0` to `4294967295` |
+| `Float` | Single precision | `3.14`, `2.718` |
+| `Double` | Double precision | `3.14159265359` |
+| `String` | Text | `"Hello World"` |
+| `DateTime` | ISO 8601 timestamp | `2025-11-05T09:34:35.737218` |
+| `Guid` | UUID identifier | `{12345678-1234-5678-1234-567812345678}` |
+| `ByteString` | Binary data | Base64 encoded |
+
+### NamespaceIndex Values
+
+| Index | Standard Meaning | Example URI |
+|-------|------------------|-------------|
+| `0` | OPC UA base namespace | `http://opcfoundation.org/UA/` |
+| `1+` | Server-specific namespaces | `urn:Studio`, `urn:MyCompany:OPC` |
+
+**Note:** Namespace indices are server-specific and may change between servers or restarts.
+
+---
+
+## Export Examples
+
+### Example 1: Export to JSON with values
 
 ```bash
-python -m opc_browser.cli export -s opc.tcp://localhost:4840 -f json -o namespaces.json --namespaces-only
+python -m opc_browser.cli export -s opc.tcp://localhost:4840 -f json --include-values -o mydata.json
 ```
 
-**Use Case:** Extract only namespace and server metadata nodes
+**Result:**
+- All nodes exported to `mydata.json`
+- Current values included for Variable nodes
+- Full metadata and namespace information
 
-#### Example 5: Complete Export with Security
+### Example 2: Export to CSV for Excel analysis
 
 ```bash
-python -m opc_browser.cli export -s opc.tcp://192.168.1.50:4840 -u admin -p admin123 -n "ns=2;i=5000" -d 10 -f csv -o export/production_complete.csv --include-values
+python -m opc_browser.cli export -s opc.tcp://server:4840 -f csv -o analysis.csv
 ```
 
-**Features:**
-- Custom starting node
-- Maximum depth of 10 levels
-- Includes current variable values
-- CSV format for Excel analysis
+**Result:**
+- Excel-compatible CSV with UTF-8 BOM
+- Summary statistics at bottom
+- Namespace table included
+- Open directly in Excel without import wizard
 
-#### Example 6: Secure XML Export
+### Example 3: Export to XML for enterprise integration
 
 ```bash
-python -m opc_browser.cli export -s opc.tcp://secure.factory.com:4840 --security Basic256Sha256 --mode SignAndEncrypt --cert certificates/client_cert.pem --key certificates/client_key.pem -u operator -p op_pass -f xml -o secure_export.xml -d 7
+python -m opc_browser.cli export -s opc.tcp://server:4840 -f xml --include-values
 ```
+
+**Result:**
+- Auto-generated filename: `export/opcua_export_20251105_093459.xml`
+- Schema-compliant XML structure
+- Values included for all variables
+- Ready for XSLT transformation or schema validation
 
 ---
 

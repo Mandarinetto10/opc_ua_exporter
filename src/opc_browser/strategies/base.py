@@ -20,13 +20,19 @@ class ExportStrategy(ABC):
     """
 
     @abstractmethod
-    async def export(self, result: BrowseResult, output_path: Path) -> None:
+    async def export(
+        self, 
+        result: BrowseResult, 
+        output_path: Path, 
+        full_export: bool = False  # NEW
+    ) -> None:
         """
         Export browse result to a file.
 
         Args:
             result: BrowseResult containing nodes to export
             output_path: Path where the file should be saved
+            full_export: If True, include all OPC UA extended attributes
 
         Raises:
             Exception: If export fails

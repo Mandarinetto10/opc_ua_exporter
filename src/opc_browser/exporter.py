@@ -55,12 +55,13 @@ class Exporter:
         "xml": XmlExportStrategy,
     }
 
-    def __init__(self, export_format: str = "csv") -> None:
+    def __init__(self, export_format: str = "csv", full_export: bool = False) -> None:
         """
         Initialize exporter with specified format.
 
         Args:
             export_format: Export format name (csv, json, xml)
+            full_export: If True, export includes all OPC UA extended attributes
 
         Raises:
             ValueError: If export_format is not supported
@@ -77,10 +78,12 @@ class Exporter:
             raise ValueError(error_msg)
 
         self.export_format = export_format
+        self.full_export = full_export  # NEW
         self.strategy = self.STRATEGIES[export_format]()
 
         logger.debug(f"Exporter initialized successfully")
         logger.debug(f"   Format: {export_format.upper()}")
+        logger.debug(f"   Full Export: {full_export}")
         logger.debug(f"   Strategy: {self.strategy.__class__.__name__}")
 
     async def export(
@@ -145,9 +148,9 @@ class Exporter:
             logger.error(error_msg)
             raise OSError(error_msg) from e
 
-        # Delegate to strategy
+        # Delegate to strategy with full_export flag
         try:
-            await self.strategy.export(result, output_path)
+            await self.strategy.export(result, output_path, self.full_export)  # MODIFIED
 
             # Verify file was created
             if not output_path.exists():

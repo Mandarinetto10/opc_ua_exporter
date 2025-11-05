@@ -124,7 +124,7 @@ class OpcUaBrowser:
         max_depth: int = 3,
         include_values: bool = False,
         namespaces_only: bool = False,
-        namespace_filter: int | None = None,
+        full_export: bool = False,  # NEW
     ) -> None:
         """Initialize OPC UA browser with configuration.
 
@@ -133,18 +133,18 @@ class OpcUaBrowser:
             max_depth: Maximum depth for recursive browsing (default: 3).
             include_values: Whether to read variable values (default: False).
             namespaces_only: Whether to filter only namespace-related nodes (default: False).
-            namespace_filter: Filter nodes by namespace index (e.g., 2).
+            full_export: Whether to read all OPC UA extended attributes (default: False).
         """
         self.client: Client = client
         self.max_depth: int = max_depth
         self.include_values: bool = include_values
         self.namespaces_only: bool = namespaces_only
-        self.namespace_filter: int | None = namespace_filter
+        self.full_export: bool = full_export  # NEW
 
         logger.info(
             f"Browser initialized (max_depth={max_depth}, "
             f"include_values={include_values}, namespaces_only={namespaces_only}, "
-            f"namespace_filter={namespace_filter})"
+            f"full_export={full_export})"
         )
 
     async def browse(self, start_node_id: str = "i=84") -> BrowseResult:
@@ -185,22 +185,6 @@ class OpcUaBrowser:
             for idx, uri in result.namespaces.items():
                 logger.debug(f"  Namespace[{idx}]: {uri}")
 
-            # Validate namespace_filter if provided
-            if self.namespace_filter is not None:
-                if self.namespace_filter not in result.namespaces:
-                    error_msg = (
-                        f"Namespace index {self.namespace_filter} not found. "
-                        f"Available: {list(result.namespaces.keys())}"
-                    )
-                    logger.error(error_msg)
-                    result.success = False
-                    result.error_message = error_msg
-                    return result
-                logger.info(
-                    f"Filtering nodes by namespace[{self.namespace_filter}]: "
-                    f"{result.namespaces[self.namespace_filter]}"
-                )
-
             # Get and validate starting node
             try:
                 start_node: Node = self.client.get_node(start_node_id)
@@ -237,17 +221,6 @@ class OpcUaBrowser:
                     f"Namespace filter applied: {result.total_nodes} namespace nodes "
                     f"out of {original_count} total nodes"
                 )
-            elif self.namespace_filter is not None:
-                original_count = result.total_nodes
-                result.nodes = [
-                    node for node in result.nodes
-                    if node.namespace_index == self.namespace_filter
-                ]
-                result.total_nodes = len(result.nodes)
-                logger.info(
-                    f"Namespace index filter applied: {result.total_nodes} nodes "
-                    f"from namespace[{self.namespace_filter}] out of {original_count} total nodes"
-                )
 
             if result.total_nodes == 0:
                 logger.warning(
@@ -282,7 +255,8 @@ class OpcUaBrowser:
         """Recursively browse nodes up to configured maximum depth.
 
         Extracts complete node information including ID, names, class, type,
-        and optional values. Applies namespace filtering if configured.
+        and optional values. If full_export is enabled, also reads extended
+        OPC UA attributes like Description, AccessLevel, etc.
 
         Args:
             node: Current asyncua Node instance to browse.
@@ -308,6 +282,38 @@ class OpcUaBrowser:
             value: any | None = None
             data_type_name: str | None = None
 
+            # Extended attributes (full export only)
+            description: str | None = None
+            access_level: str | None = None
+            user_access_level: str | None = None
+            write_mask: int | None = None
+            user_write_mask: int | None = None
+            event_notifier: int | None = None
+            executable: bool | None = None
+            user_executable: bool | None = None
+            minimum_sampling_interval: float | None = None
+            historizing: bool | None = None
+
+            # Read Description (common to all node classes)
+            if self.full_export:
+                try:
+                    desc_text = await node.read_description()
+                    if desc_text and desc_text.Text:
+                        description = desc_text.Text
+                except Exception:
+                    pass  # Description is optional
+
+                # Read WriteMask and UserWriteMask (common to all)
+                try:
+                    write_mask = await node.read_write_mask()
+                except Exception:
+                    pass
+
+                try:
+                    user_write_mask = await node.read_user_write_mask()
+                except Exception:
+                    pass
+
             if node_class == NodeClass.Variable:
                 try:
                     data_type_node: ua.NodeId = await node.read_data_type()
@@ -331,8 +337,53 @@ class OpcUaBrowser:
                         value_variant = await node.read_value()
                         value = value_variant
 
+                    # Read Variable-specific attributes (full export only)
+                    if self.full_export:
+                        try:
+                            al = await node.read_access_level()
+                            access_level = self._format_access_level(al)
+                        except Exception:
+                            pass
+
+                        try:
+                            ual = await node.read_user_access_level()
+                            user_access_level = self._format_access_level(ual)
+                        except Exception:
+                            pass
+
+                        try:
+                            minimum_sampling_interval = await node.read_minimum_sampling_interval()
+                        except Exception:
+                            pass
+
+                        try:
+                            historizing = await node.read_historizing()
+                        except Exception:
+                            pass
+
                 except Exception as e:
                     logger.debug(f"Could not read variable data for {node_id}: {e}")
+
+            elif node_class == NodeClass.Object:
+                # Read Object-specific attributes (full export only)
+                if self.full_export:
+                    try:
+                        event_notifier = await node.read_event_notifier()
+                    except Exception:
+                        pass
+
+            elif node_class == NodeClass.Method:
+                # Read Method-specific attributes (full export only)
+                if self.full_export:
+                    try:
+                        executable = await node.read_executable()
+                    except Exception:
+                        pass
+
+                    try:
+                        user_executable = await node.read_user_executable()
+                    except Exception:
+                        pass
 
             opc_node: OpcUaNode = OpcUaNode(
                 node_id=node_id,
@@ -345,6 +396,16 @@ class OpcUaBrowser:
                 depth=depth,
                 namespace_index=namespace_index,
                 is_namespace_node=is_namespace_node,
+                description=description,
+                access_level=access_level,
+                user_access_level=user_access_level,
+                write_mask=write_mask,
+                user_write_mask=user_write_mask,
+                event_notifier=event_notifier,
+                executable=executable,
+                user_executable=user_executable,
+                minimum_sampling_interval=minimum_sampling_interval,
+                historizing=historizing,
             )
 
             result.add_node(opc_node)
@@ -634,9 +695,9 @@ class OpcUaBrowser:
                     value_str = value_str[:37] + "..."
                 node_info += f" = {value_str}"
 
-            # Add namespace indicator for non-standard namespaces
+            # Show full NodeID if not in namespace 0
             if node.namespace_index > 0:
-                node_info += f" [ns={node.namespace_index}]"
+                node_info += f" [{node.node_id}]"
 
             print(node_info)
 
