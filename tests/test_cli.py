@@ -42,14 +42,14 @@ class TestCreateParser:
     def test_parser_has_browse_command(self):
         """Test parser has browse subcommand."""
         parser = create_parser()
-        args = parser.parse_args(["browse", "-s", "opc.tcp://localhost:48010"])
+        args = parser.parse_args(["browse", "-s", "opc.tcp://localhost:4840"])
         assert args.command == "browse"
-        assert args.server_url == "opc.tcp://localhost:48010"
+        assert args.server_url == "opc.tcp://localhost:4840"
 
     def test_parser_has_export_command(self):
         """Test parser has export subcommand."""
         parser = create_parser()
-        args = parser.parse_args(["export", "-s", "opc.tcp://localhost:48010", "-f", "json"])
+        args = parser.parse_args(["export", "-s", "opc.tcp://localhost:4840", "-f", "json"])
         assert args.command == "export"
         assert args.format == "json"
 
@@ -66,7 +66,7 @@ class TestCreateParser:
             [
                 "browse",
                 "-s",
-                "opc.tcp://localhost:48010",
+                "opc.tcp://localhost:4840",
                 "-n",
                 "ns=2;i=1000",
                 "-d",
@@ -98,7 +98,7 @@ class TestCreateParser:
             [
                 "export",
                 "-s",
-                "opc.tcp://localhost:48010",
+                "opc.tcp://localhost:4840",
                 "-f",
                 "xml",
                 "-o",
@@ -154,7 +154,7 @@ class TestExecuteBrowse:
     async def test_execute_browse_success(self):
         """Test successful browse execution."""
         args = argparse.Namespace(
-            server_url="opc.tcp://localhost:48010",
+            server_url="opc.tcp://localhost:4840",
             node_id="i=84",
             depth=3,
             security="None",
@@ -190,7 +190,7 @@ class TestExecuteBrowse:
     async def test_execute_browse_failure(self):
         """Test browse execution with failed result."""
         args = argparse.Namespace(
-            server_url="opc.tcp://localhost:48010",
+            server_url="opc.tcp://localhost:4840",
             node_id="i=84",
             depth=3,
             security="None",
@@ -223,7 +223,7 @@ class TestExecuteBrowse:
     async def test_execute_browse_keyboard_interrupt(self):
         """Test browse execution with keyboard interrupt."""
         args = argparse.Namespace(
-            server_url="opc.tcp://localhost:48010",
+            server_url="opc.tcp://localhost:4840",
             node_id="i=84",
             depth=3,
             security="None",
@@ -244,7 +244,7 @@ class TestExecuteBrowse:
     async def test_execute_browse_general_exception(self):
         """Test browse with general exception."""
         args = argparse.Namespace(
-            server_url="opc.tcp://localhost:48010",
+            server_url="opc.tcp://localhost:4840",
             node_id="i=84",
             depth=3,
             security="None",
@@ -269,7 +269,7 @@ class TestExecuteExport:
     async def test_execute_export_success(self):
         """Test successful export execution."""
         args = argparse.Namespace(
-            server_url="opc.tcp://localhost:48010",
+            server_url="opc.tcp://localhost:4840",
             node_id="i=84",
             depth=3,
             security="None",
@@ -317,7 +317,7 @@ class TestExecuteExport:
     async def test_execute_export_browse_failure(self):
         """Test export with failed browse."""
         args = argparse.Namespace(
-            server_url="opc.tcp://localhost:48010",
+            server_url="opc.tcp://localhost:4840",
             node_id="i=84",
             depth=3,
             security="None",
@@ -355,7 +355,7 @@ class TestExecuteExport:
     async def test_execute_export_no_nodes(self):
         """Test export with no nodes discovered."""
         args = argparse.Namespace(
-            server_url="opc.tcp://localhost:48010",
+            server_url="opc.tcp://localhost:4840",
             node_id="i=84",
             depth=3,
             security="None",
@@ -394,7 +394,7 @@ class TestExecuteExport:
     async def test_execute_export_format_autodetect(self):
         """Test export format auto-detection from filename."""
         args = argparse.Namespace(
-            server_url="opc.tcp://localhost:48010",
+            server_url="opc.tcp://localhost:4840",
             node_id="i=84",
             depth=3,
             security="None",
@@ -450,7 +450,7 @@ class TestExecuteExport:
     async def test_execute_export_exception(self):
         """Test export with exception during export."""
         args = argparse.Namespace(
-            server_url="opc.tcp://localhost:48010",
+            server_url="opc.tcp://localhost:4840",
             node_id="i=84",
             depth=3,
             security="None",
@@ -495,7 +495,7 @@ class TestExecuteExport:
     async def test_execute_export_value_error(self):
         """Test export with ValueError during export."""
         args = argparse.Namespace(
-            server_url="opc.tcp://localhost:48010",
+            server_url="opc.tcp://localhost:4840",
             node_id="i=84",
             depth=3,
             security="None",
@@ -540,7 +540,7 @@ class TestExecuteExport:
     async def test_execute_export_os_error(self):
         """Test export with OSError during export."""
         args = argparse.Namespace(
-            server_url="opc.tcp://localhost:48010",
+            server_url="opc.tcp://localhost:4840",
             node_id="i=84",
             depth=3,
             security="None",
@@ -585,7 +585,7 @@ class TestExecuteExport:
     async def test_execute_export_keyboard_interrupt(self):
         """Test export with keyboard interrupt."""
         args = argparse.Namespace(
-            server_url="opc.tcp://localhost:48010",
+            server_url="opc.tcp://localhost:4840",
             node_id="i=84",
             depth=3,
             security="None",
@@ -611,7 +611,7 @@ class TestExecuteExport:
     async def test_execute_export_general_exception(self):
         """Test export with general exception."""
         args = argparse.Namespace(
-            server_url="opc.tcp://localhost:48010",
+            server_url="opc.tcp://localhost:4840",
             node_id="i=84",
             depth=3,
             security="None",
@@ -637,7 +637,7 @@ class TestExecuteExport:
     async def test_execute_export_format_mismatch_warning(self):
         """Test export with format mismatch warning."""
         args = argparse.Namespace(
-            server_url="opc.tcp://localhost:48010",
+            server_url="opc.tcp://localhost:4840",
             node_id="i=84",
             depth=3,
             security="None",

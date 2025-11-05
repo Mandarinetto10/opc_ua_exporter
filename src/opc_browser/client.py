@@ -68,13 +68,13 @@ class OpcUaClient:
 
     Examples:
         Basic connection without security:
-            >>> async with OpcUaClient(server_url="opc.tcp://localhost:48010") as client:
+            >>> async with OpcUaClient(server_url="opc.tcp://localhost:4840") as client:
             ...     opcua_client = client.get_client()
             ...     # Use opcua_client for operations
 
         Secure connection with certificates:
             >>> async with OpcUaClient(
-            ...     server_url="opc.tcp://server:48010",
+            ...     server_url="opc.tcp://server:4840",
             ...     username="admin",
             ...     password="password",
             ...     security_policy="Basic256Sha256",
@@ -121,7 +121,7 @@ class OpcUaClient:
         """Initialize OPC UA client with connection parameters.
 
         Args:
-            server_url: OPC UA server endpoint (e.g., opc.tcp://localhost:48010).
+            server_url: OPC UA server endpoint (e.g., opc.tcp://localhost:4840).
             username: Username for authentication (optional).
             password: Password for authentication (optional).
             security_policy: Security policy name (default: "None").

@@ -21,7 +21,7 @@ def dummy_client():
 
 def test_init_sets_attributes(dummy_client):
     c = OpcUaClient(
-        server_url="opc.tcp://localhost:48010",
+        server_url="opc.tcp://localhost:4840",
         username="user",
         password="pw",
         security_policy="None",
@@ -29,7 +29,7 @@ def test_init_sets_attributes(dummy_client):
         certificate_path=Path("cert.pem"),
         private_key_path=Path("key.pem"),
     )
-    assert c.server_url == "opc.tcp://localhost:48010"
+    assert c.server_url == "opc.tcp://localhost:4840"
     assert c.username == "user"
     assert c.password == "pw"
     assert c.security_policy == "None"
@@ -41,7 +41,7 @@ def test_init_sets_attributes(dummy_client):
 
 @pytest.mark.asyncio
 async def test_aenter_and_aexit_calls_connect_disconnect(dummy_client):
-    c = OpcUaClient("opc.tcp://localhost:48010")
+    c = OpcUaClient("opc.tcp://localhost:4840")
     c.connect = AsyncMock()
     c.disconnect = AsyncMock()
     async with c:
@@ -51,7 +51,7 @@ async def test_aenter_and_aexit_calls_connect_disconnect(dummy_client):
 
 @pytest.mark.asyncio
 async def test_connect_no_security(dummy_client):
-    c = OpcUaClient("opc.tcp://localhost:48010")
+    c = OpcUaClient("opc.tcp://localhost:4840")
     c.client.connect = AsyncMock()
     server_node = MagicMock()
     server_node.read_browse_name = AsyncMock(return_value=MagicMock(Name="Server"))
@@ -67,7 +67,7 @@ async def test_connect_with_security_configured(tmp_path, dummy_client):
     cert.write_text("CERT")
     key.write_text("KEY")
     c = OpcUaClient(
-        "opc.tcp://localhost:48010",
+        "opc.tcp://localhost:4840",
         security_policy="Basic256Sha256",
         security_mode="SignAndEncrypt",
         certificate_path=cert,
@@ -85,7 +85,7 @@ async def test_connect_with_security_configured(tmp_path, dummy_client):
 
 @pytest.mark.asyncio
 async def test_connect_with_username_password(dummy_client):
-    c = OpcUaClient("opc.tcp://localhost:48010", username="u", password="p")
+    c = OpcUaClient("opc.tcp://localhost:4840", username="u", password="p")
     c.client.set_user = MagicMock()
     c.client.set_password = MagicMock()
     c.client.connect = AsyncMock()
@@ -127,7 +127,7 @@ async def test_connect_ua_status_code_error(dummy_client):
     builtins.isinstance = patched_isinstance
 
     try:
-        c = OpcUaClient("opc.tcp://localhost:48010")
+        c = OpcUaClient("opc.tcp://localhost:4840")
         c.client.connect = AsyncMock(side_effect=MockUaStatusCodeError())
 
         with pytest.raises(ConnectionError) as e:
@@ -142,7 +142,7 @@ async def test_connect_ua_status_code_error(dummy_client):
 
 @pytest.mark.asyncio
 async def test_connect_generic_exception(dummy_client):
-    c = OpcUaClient("opc.tcp://localhost:48010")
+    c = OpcUaClient("opc.tcp://localhost:4840")
     c.client.connect = AsyncMock(side_effect=Exception("fail"))
     with pytest.raises(ConnectionError) as e:
         await c.connect()
@@ -151,26 +151,26 @@ async def test_connect_generic_exception(dummy_client):
 
 @pytest.mark.asyncio
 async def test_configure_security_errors(tmp_path, dummy_client):
-    c = OpcUaClient("opc.tcp://localhost:48010", security_policy="Invalid")
+    c = OpcUaClient("opc.tcp://localhost:4840", security_policy="Invalid")
     with pytest.raises(SecurityConfigurationError):
         await c._configure_security()
-    c = OpcUaClient("opc.tcp://localhost:48010", security_policy="Basic256Sha256")
+    c = OpcUaClient("opc.tcp://localhost:4840", security_policy="Basic256Sha256")
     with pytest.raises(SecurityConfigurationError):
         await c._configure_security()
     c = OpcUaClient(
-        "opc.tcp://localhost:48010", security_policy="Basic256Sha256", security_mode="Invalid"
+        "opc.tcp://localhost:4840", security_policy="Basic256Sha256", security_mode="Invalid"
     )
     with pytest.raises(SecurityConfigurationError):
         await c._configure_security()
     c = OpcUaClient(
-        "opc.tcp://localhost:48010", security_policy="Basic256Sha256", security_mode="Sign"
+        "opc.tcp://localhost:4840", security_policy="Basic256Sha256", security_mode="Sign"
     )
     with pytest.raises(SecurityConfigurationError):
         await c._configure_security()
     cert = tmp_path / "cert.pem"
     key = tmp_path / "key.pem"
     c = OpcUaClient(
-        "opc.tcp://localhost:48010",
+        "opc.tcp://localhost:4840",
         security_policy="Basic256Sha256",
         security_mode="Sign",
         certificate_path=cert,
@@ -180,7 +180,7 @@ async def test_configure_security_errors(tmp_path, dummy_client):
         await c._configure_security()
     cert.write_text("CERT")
     c = OpcUaClient(
-        "opc.tcp://localhost:48010",
+        "opc.tcp://localhost:4840",
         security_policy="Basic256Sha256",
         security_mode="Sign",
         certificate_path=cert,
@@ -190,7 +190,7 @@ async def test_configure_security_errors(tmp_path, dummy_client):
         await c._configure_security()
     key.write_text("KEY")
     c = OpcUaClient(
-        "opc.tcp://localhost:48010",
+        "opc.tcp://localhost:4840",
         security_policy="Basic256Sha256",
         security_mode="Sign",
         certificate_path=cert,
@@ -203,7 +203,7 @@ async def test_configure_security_errors(tmp_path, dummy_client):
 
 @pytest.mark.asyncio
 async def test_disconnect_success(dummy_client):
-    c = OpcUaClient("opc.tcp://localhost:48010")
+    c = OpcUaClient("opc.tcp://localhost:4840")
     c.client.disconnect = AsyncMock()
     await c.disconnect()
     c.client.disconnect.assert_awaited_once()
@@ -211,13 +211,13 @@ async def test_disconnect_success(dummy_client):
 
 @pytest.mark.asyncio
 async def test_disconnect_exception(dummy_client):
-    c = OpcUaClient("opc.tcp://localhost:48010")
+    c = OpcUaClient("opc.tcp://localhost:4840")
     c.client.disconnect = AsyncMock(side_effect=Exception("fail"))
     await c.disconnect()  # Should not raise
 
 
 def test_get_client(dummy_client):
-    c = OpcUaClient("opc.tcp://localhost:48010")
+    c = OpcUaClient("opc.tcp://localhost:4840")
     assert c.get_client() is c.client
 
 
@@ -231,7 +231,7 @@ def test_get_supported_policies_and_modes():
 
 
 def test_format_ua_error_all_branches():
-    c = OpcUaClient("opc.tcp://localhost:48010")
+    c = OpcUaClient("opc.tcp://localhost:4840")
 
     # With .code.name
     class DummyError:

@@ -342,7 +342,7 @@ python -m opc_browser.cli export -s opc.tcp://server:4840 --format xml -o mydata
 
 ```bash
 # Browse with depth 2 to see namespace structure
-python -m opc_browser.cli browse -s opc.tcp://localhost:48010 -d 2
+python -m opc_browser.cli browse -s opc.tcp://localhost:4840 -d 2
 ```
 
 ## Exported Fields Reference
@@ -1421,7 +1421,7 @@ pytest --cov=src_opc_browser --cov-report=html --html=test-report.html
 # 3. Test network connectivity
 ping hostname
 
-# 4. Check firewall rules (common OPC UA ports: 4840, 48010)
+# 4. Check firewall rules (common OPC UA ports: 4840, 4840)
 # 5. Try basic connection without security
 python -m opc_browser.cli browse -s opc.tcp://localhost:4840
 ```

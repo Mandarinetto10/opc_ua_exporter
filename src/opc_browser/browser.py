@@ -41,7 +41,7 @@ class OpcUaBrowser:
 
     Examples:
         Basic browse:
-            >>> async with OpcUaClient("opc.tcp://localhost:48010") as client:
+            >>> async with OpcUaClient("opc.tcp://localhost:4840") as client:
             ...     browser = OpcUaBrowser(client.get_client(), max_depth=5)
             ...     result = await browser.browse()
             ...     browser.print_tree(result)

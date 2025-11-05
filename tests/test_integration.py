@@ -1,10 +1,10 @@
 """Integration tests for OPC UA Browser and Client with real server.
 
-These tests attempt to connect to a real OPC UA server running on localhost:48010.
+These tests attempt to connect to a real OPC UA server running on localhost:4840.
 If the server is not available, tests are skipped gracefully without failing.
 
 To run these tests with a real server:
-1. Start your OPC UA server on opc.tcp://localhost:48010
+1. Start your OPC UA server on opc.tcp://localhost:4840
 2. Run: pytest tests/test_integration.py -v
 3. Run with marker: pytest -m integration -v
 
@@ -22,7 +22,7 @@ from opc_browser.client import ConnectionError as OpcConnectionError
 from opc_browser.client import OpcUaClient
 
 # Configuration for real OPC UA server
-REAL_SERVER_URL = "opc.tcp://localhost:48010"
+REAL_SERVER_URL = "opc.tcp://localhost:4840"
 REAL_SERVER_TIMEOUT = 3  # seconds to wait before considering server unavailable
 
 
@@ -60,10 +60,10 @@ async def server_available():
 async def test_real_browse_basic(server_available):
     """Test basic browse operation on real OPC UA server.
 
-    Connects to localhost:48010 and performs a shallow browse.
+    Connects to localhost:4840 and performs a shallow browse.
     """
     if not server_available:
-        pytest.skip("OPC UA server not available on localhost:48010")
+        pytest.skip("OPC UA server not available on localhost:4840")
 
     try:
         async with OpcUaClient(server_url=REAL_SERVER_URL) as client:
@@ -455,9 +455,9 @@ def test_server_availability_check():
     assert isinstance(result, bool)
 
     if result:
-        print("\n✅ OPC UA server is available on localhost:48010")
+        print("\n✅ OPC UA server is available on localhost:4840")
     else:
-        print("\n⚠️  OPC UA server not available on localhost:48010 (this is OK)")
+        print("\n⚠️  OPC UA server not available on localhost:4840 (this is OK)")
 
 
 # Helper fixture for pytest markers

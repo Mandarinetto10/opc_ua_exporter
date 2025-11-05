@@ -50,19 +50,19 @@ def create_parser() -> argparse.ArgumentParser:
         epilog="""
 Examples:
   # Browse with default settings (no security)
-  %(prog)s browse -s opc.tcp://localhost:48010
+  %(prog)s browse -s opc.tcp://localhost:4840
 
   # Browse with username/password (no encryption)
-  %(prog)s browse -s opc.tcp://server:48010 -u admin -p password
+  %(prog)s browse -s opc.tcp://server:4840 -u admin -p password
 
   # Browse with security policy and certificates
-  %(prog)s browse -s opc.tcp://server:48010 --security Basic256Sha256 --mode SignAndEncrypt --cert client_cert.pem --key client_key.pem -u admin -p password
+  %(prog)s browse -s opc.tcp://server:4840 --security Basic256Sha256 --mode SignAndEncrypt --cert client_cert.pem --key client_key.pem -u admin -p password
 
   # Export to JSON with values and security
-  %(prog)s export -s opc.tcp://localhost:48010 --security Aes128_Sha256_RsaOaep --mode Sign --cert cert.pem --key key.pem -f json --include-values
+  %(prog)s export -s opc.tcp://localhost:4840 --security Aes128_Sha256_RsaOaep --mode Sign --cert cert.pem --key key.pem -f json --include-values
 
   # Export to CSV with namespaces only
-  %(prog)s export -s opc.tcp://localhost:48010 -f csv --namespaces-only
+  %(prog)s export -s opc.tcp://localhost:4840 -f csv --namespaces-only
 
   # Generate self-signed certificate with default settings
   %(prog)s generate-cert --dir certificates
@@ -85,7 +85,7 @@ Examples:
             "--server-url",
             "-s",
             required=True,
-            help="OPC UA server endpoint URL (e.g., opc.tcp://localhost:48010)",
+            help="OPC UA server endpoint URL (e.g., opc.tcp://localhost:4840)",
         )
         subparser.add_argument(
             "--node-id",
@@ -247,7 +247,7 @@ async def execute_browse(args: argparse.Namespace) -> int:
 
     Examples:
         Basic browse:
-            args.server_url = "opc.tcp://localhost:48010"
+            args.server_url = "opc.tcp://localhost:4840"
             args.node_id = "i=84"
             args.depth = 3
 
@@ -260,10 +260,10 @@ async def execute_browse(args: argparse.Namespace) -> int:
     try:
         parsed_url: ParseResult = urlparse(args.server_url)
         server_hostname: str = parsed_url.hostname or "unknown"
-        port: int = parsed_url.port or 48010
+        port: int = parsed_url.port or 4840
     except Exception:
         server_hostname = "unknown"
-        port = 48010
+        port = 4840
 
     client_hostname: str = socket.gethostname()
 
@@ -346,10 +346,10 @@ async def execute_export(args: argparse.Namespace) -> int:
     try:
         parsed_url: ParseResult = urlparse(args.server_url)
         server_hostname: str = parsed_url.hostname or "unknown"
-        port: int = parsed_url.port or 48010
+        port: int = parsed_url.port or 4840
     except Exception:
         server_hostname = "unknown"
-        port = 48010
+        port = 4840
 
     client_hostname: str = socket.gethostname()
 
