@@ -25,7 +25,10 @@ class CsvExportStrategy(ExportStrategy):
     """
 
     async def export(
-        self, result: BrowseResult, output_path: Path, full_export: bool = False  # NEW
+        self,
+        result: BrowseResult,
+        output_path: Path,
+        full_export: bool = False,  # NEW
     ) -> None:
         """Export nodes to CSV file with proper quoting for Excel compatibility.
 

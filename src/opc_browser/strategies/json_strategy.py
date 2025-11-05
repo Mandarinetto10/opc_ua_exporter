@@ -25,7 +25,10 @@ class JsonExportStrategy(ExportStrategy):
     """
 
     async def export(
-        self, result: BrowseResult, output_path: Path, full_export: bool = False  # NEW
+        self,
+        result: BrowseResult,
+        output_path: Path,
+        full_export: bool = False,  # NEW
     ) -> None:
         """
         Export nodes to JSON file with pretty formatting.

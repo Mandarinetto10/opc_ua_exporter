@@ -591,7 +591,10 @@ class TestBrowseRecursive:
         result = BrowseResult()
 
         await browser._browse_recursive(
-            node=mock_node, parent_id=None, depth=2, result=result  # Exceeds max_depth
+            node=mock_node,
+            parent_id=None,
+            depth=2,
+            result=result,  # Exceeds max_depth
         )
 
         assert result.total_nodes == 0  # Should not add node beyond max_depth

@@ -72,7 +72,7 @@ class Exporter:
         if export_format not in self.STRATEGIES:
             supported = ", ".join(self.STRATEGIES.keys())
             error_msg = (
-                f"Unsupported export format '{export_format}'. " f"Supported formats: {supported}"
+                f"Unsupported export format '{export_format}'. Supported formats: {supported}"
             )
             logger.error(error_msg)
             raise ValueError(error_msg)

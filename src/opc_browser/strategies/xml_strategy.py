@@ -24,7 +24,10 @@ class XmlExportStrategy(ExportStrategy):
     """
 
     async def export(
-        self, result: BrowseResult, output_path: Path, full_export: bool = False  # NEW
+        self,
+        result: BrowseResult,
+        output_path: Path,
+        full_export: bool = False,  # NEW
     ) -> None:
         """Export nodes to XML file with pretty formatting.
 
@@ -102,7 +105,10 @@ class XmlExportStrategy(ExportStrategy):
             raise
 
     def _add_node_element(
-        self, parent: Element, node: OpcUaNode, full_export: bool = False  # NEW
+        self,
+        parent: Element,
+        node: OpcUaNode,
+        full_export: bool = False,  # NEW
     ) -> None:
         """Add a node as XML element with all attributes.
 
