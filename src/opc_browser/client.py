@@ -7,8 +7,11 @@ configuration using the async context manager pattern.
 
 from __future__ import annotations
 
+import os
+import stat
 from pathlib import Path
 from typing import Any, ClassVar
+from urllib.parse import urlparse
 
 from asyncua import Client, ua
 from asyncua.crypto.security_policies import (
@@ -135,7 +138,7 @@ class OpcUaClient:
         Raises:
             SecurityConfigurationError: If security configuration is invalid.
         """
-        self.server_url = server_url
+        self.server_url = self._validate_server_url(server_url)
         self.username = username
         self.password = password
         self.security_policy = security_policy
@@ -144,7 +147,7 @@ class OpcUaClient:
         self.private_key_path = private_key_path
 
         # Initialize asyncua client with 30s timeout for slow networks
-        self.client = Client(url=server_url, timeout=30)
+        self.client = Client(url=self.server_url, timeout=30)
 
         logger.debug(f"OPC UA Client initialized for {server_url}")
 
@@ -262,6 +265,29 @@ class OpcUaClient:
 
         if not self.private_key_path.exists():
             raise SecurityConfigurationError(f"Private key file not found: {self.private_key_path}")
+
+        # SECURITY: enforce that private key permissions do not expose the key to other users
+        if os.name != "nt":
+            try:
+                key_mode = self.private_key_path.stat().st_mode
+            except OSError as exc:
+                raise SecurityConfigurationError(
+                    f"Unable to read private key permissions: {exc}"
+                ) from exc
+
+            if key_mode & (stat.S_IRWXG | stat.S_IRWXO):
+                try:
+                    self.private_key_path.chmod(0o600)
+                    key_mode = self.private_key_path.stat().st_mode
+                except OSError as exc:
+                    raise SecurityConfigurationError(
+                        "Private key permissions are too permissive and could not be restricted automatically"
+                    ) from exc
+
+                if key_mode & (stat.S_IRWXG | stat.S_IRWXO):
+                    raise SecurityConfigurationError(
+                        "Private key file permissions remain too permissive after chmod 600"
+                    )
 
         policy_class: type[Any] = self.SECURITY_POLICY_MAP[self.security_policy]
         mode: MessageSecurityMode = self.SECURITY_MODE_MAP[self.security_mode]
@@ -385,3 +411,23 @@ class OpcUaClient:
             List of security mode names (e.g., ["Sign", "SignAndEncrypt"]).
         """
         return list(cls.SECURITY_MODE_MAP.keys())
+
+    def _validate_server_url(self, server_url: str) -> str:
+        """Validate server URL to mitigate SSRF and malformed endpoint attacks."""
+
+        sanitized = server_url.strip()
+        parsed = urlparse(sanitized)
+
+        # SECURITY: limit accepted scheme/host to legitimate OPC UA TCP endpoints
+        if parsed.scheme.lower() != "opc.tcp":
+            raise SecurityConfigurationError(
+                "Server URL must use opc.tcp scheme for OPC UA connections"
+            )
+
+        if not parsed.hostname:
+            raise SecurityConfigurationError("Server URL must include a hostname or IP address")
+
+        if any(ch.isspace() for ch in sanitized):
+            raise SecurityConfigurationError("Server URL must not contain whitespace characters")
+
+        return sanitized

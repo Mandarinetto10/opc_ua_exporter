@@ -181,7 +181,6 @@ class OpcUaBrowser:
                 result.error_message = error_msg
                 return result
 
-
             result.namespaces = await self._get_namespaces()
             logger.info(f"Found {len(result.namespaces)} namespaces")
 
@@ -213,7 +212,12 @@ class OpcUaBrowser:
             # Stima nodi: non conosciamo il numero esatto, quindi usiamo una barra indeterminata
             with tqdm(desc="Browsing address space", unit="node", leave=True) as pbar:
                 # Wrapper per incrementare la barra ad ogni nodo
-                async def browse_with_progress(node, parent_id, depth, result):
+                async def browse_with_progress(
+                    node: Node,
+                    parent_id: str | None,
+                    depth: int,
+                    result: BrowseResult,
+                ) -> None:
                     if depth > self.max_depth:
                         return
                     pbar.update(1)
@@ -281,7 +285,9 @@ class OpcUaBrowser:
                                     except Exception:
                                         pass
                                     with contextlib.suppress(Exception):
-                                        minimum_sampling_interval = await node.read_minimum_sampling_interval()
+                                        minimum_sampling_interval = (
+                                            await node.read_minimum_sampling_interval()
+                                        )
                                     with contextlib.suppress(Exception):
                                         historizing = await node.read_historizing()
                             except Exception as e:
