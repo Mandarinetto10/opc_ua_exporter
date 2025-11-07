@@ -4,7 +4,8 @@ All export formats contain the same information, organized differently based on 
 
 ### Node Fields
 
-Each OPC UA node is exported with the following fields:
+Each OPC UA node is exported with the following fields (generated from
+[`docs/EXPORT_FORMATS.py`](EXPORT_FORMATS.py)):
 
 | Field | Type | Description | Example | Always Present |
 |-------|------|-------------|---------|----------------|
@@ -21,9 +22,28 @@ Each OPC UA node is exported with the following fields:
 | **IsNamespaceNode** | Boolean | True if node is namespace metadata | `true`, `false` | ✅ Yes |
 | **Timestamp** | ISO 8601 | When the node data was captured | `2025-11-05T09:34:35.737218` | ✅ Yes |
 
-### Metadata Fields
+### Extended Attributes (`--full-export`)
 
-Export metadata included in all formats:
+When `--full-export` is enabled, the exporter appends these OPC UA attributes to
+each node:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| **Description** | String | Localized text describing the node |
+| **AccessLevel** | String | Bitmask describing current access level |
+| **UserAccessLevel** | String | Access level resolved for the authenticated user |
+| **WriteMask** | Integer | Bitmask of writable attributes |
+| **UserWriteMask** | Integer | User-specific writable attributes |
+| **EventNotifier** | Integer | Event subscription capabilities |
+| **Executable** | Boolean | Whether a Method node is executable |
+| **UserExecutable** | Boolean | Whether a Method node is executable for the authenticated user |
+| **MinimumSamplingInterval** | Float | Recommended minimum sampling interval in milliseconds |
+| **Historizing** | Boolean | Indicates whether the server historizes values |
+
+### Metadata Fields (JSON & XML)
+
+JSON and XML exports include an additional metadata object describing the
+operation:
 
 | Field | Description | Example |
 |-------|-------------|---------|
@@ -32,10 +52,12 @@ Export metadata included in all formats:
 | **Success** | Whether browse operation succeeded | `true` |
 | **ErrorMessage** | Error details if browse failed | `null` or error text |
 | **ExportTimestamp** | When the export was created | `2025-11-05T09:34:59.198601` |
+| **FullExport** | Whether `--full-export` was enabled | `true` |
 
-### Namespace Fields
+### Namespace Fields (JSON & XML)
 
-Namespace definitions included in all formats:
+JSON and XML exports include a dedicated namespace list. CSV embeds the
+namespace index on each node row instead of a separate section.
 
 | Field | Description | Example |
 |-------|-------------|---------|
@@ -50,10 +72,9 @@ Namespace definitions included in all formats:
 
 **Structure:**
 - UTF-8 with BOM for Excel compatibility
-- Comma-delimited (`,`
-- Auto-quoted fields containing special characters
-- Summary section at bottom
-- Namespace table at bottom
+- Comma-delimited (`,`) with automatic quoting
+- One header row describing the exported fields
+- Additional columns appear when `--full-export` is enabled
 
 **Example:**
 ```csv
