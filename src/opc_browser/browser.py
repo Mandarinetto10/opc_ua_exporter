@@ -15,6 +15,7 @@ from asyncua import Client, ua
 from asyncua.common.node import Node
 from asyncua.ua import NodeClass, ObjectIds, VariantType
 from loguru import logger
+from tqdm import tqdm
 
 from .models import BrowseResult, OpcUaNode
 
@@ -180,10 +181,11 @@ class OpcUaBrowser:
                 result.error_message = error_msg
                 return result
 
+
             result.namespaces = await self._get_namespaces()
             logger.info(f"Found {len(result.namespaces)} namespaces")
 
-            # Log namespace URIs for user reference
+            # Log namespace URIs per user reference
             for idx, uri in result.namespaces.items():
                 logger.debug(f"  Namespace[{idx}]: {uri}")
 
@@ -207,12 +209,136 @@ class OpcUaBrowser:
                 result.error_message = error_msg
                 return result
 
-            await self._browse_recursive(
-                node=start_node,
-                parent_id=None,
-                depth=0,
-                result=result,
-            )
+            # Progress bar for browse
+            # Stima nodi: non conosciamo il numero esatto, quindi usiamo una barra indeterminata
+            with tqdm(desc="Browsing address space", unit="node", leave=True) as pbar:
+                # Wrapper per incrementare la barra ad ogni nodo
+                async def browse_with_progress(node, parent_id, depth, result):
+                    if depth > self.max_depth:
+                        return
+                    pbar.update(1)
+                    try:
+                        node_id: str = node.nodeid.to_string()
+                        browse_name_obj: ua.QualifiedName = await node.read_browse_name()
+                        browse_name: str = browse_name_obj.Name
+                        display_name_obj: ua.LocalizedText = await node.read_display_name()
+                        display_name: str = display_name_obj.Text
+                        node_class: NodeClass = await node.read_node_class()
+                        namespace_index: int = node.nodeid.NamespaceIndex
+                        is_namespace_node: bool = await self._is_namespace_node(node, browse_name)
+                        data_type: str | None = None
+                        value: Any | None = None
+                        data_type_name: str | None = None
+                        description: str | None = None
+                        access_level: str | None = None
+                        user_access_level: str | None = None
+                        write_mask: int | None = None
+                        user_write_mask: int | None = None
+                        event_notifier: int | None = None
+                        executable: bool | None = None
+                        user_executable: bool | None = None
+                        minimum_sampling_interval: float | None = None
+                        historizing: bool | None = None
+                        if self.full_export:
+                            try:
+                                desc_text = await node.read_description()
+                                if desc_text and desc_text.Text:
+                                    description = desc_text.Text
+                            except Exception:
+                                pass
+                            with contextlib.suppress(Exception):
+                                write_mask = await node.read_write_mask()
+                            with contextlib.suppress(Exception):
+                                user_write_mask = await node.read_user_write_mask()
+                        if node_class == NodeClass.Variable:
+                            try:
+                                data_type_node: ua.NodeId = await node.read_data_type()
+                                data_type = data_type_node.to_string()
+                                try:
+                                    variant: ua.DataValue = await node.read_data_value()
+                                    if variant.Value and hasattr(variant.Value, "VariantType"):
+                                        variant_type: VariantType = variant.Value.VariantType
+                                        data_type_name = self.DATA_TYPE_NAMES.get(
+                                            variant_type,
+                                            self._parse_data_type_id(data_type),
+                                        )
+                                    else:
+                                        data_type_name = self._parse_data_type_id(data_type)
+                                except Exception:
+                                    data_type_name = self._parse_data_type_id(data_type)
+                                if self.include_values:
+                                    value_variant = await node.read_value()
+                                    value = value_variant
+                                if self.full_export:
+                                    try:
+                                        al = await node.read_access_level()
+                                        access_level = self._format_access_level(al)
+                                    except Exception:
+                                        pass
+                                    try:
+                                        ual = await node.read_user_access_level()
+                                        user_access_level = self._format_access_level(ual)
+                                    except Exception:
+                                        pass
+                                    with contextlib.suppress(Exception):
+                                        minimum_sampling_interval = await node.read_minimum_sampling_interval()
+                                    with contextlib.suppress(Exception):
+                                        historizing = await node.read_historizing()
+                            except Exception as e:
+                                logger.debug(f"Could not read variable data for {node_id}: {e}")
+                        elif node_class == NodeClass.Object:
+                            if self.full_export:
+                                with contextlib.suppress(Exception):
+                                    event_notifier = await node.read_event_notifier()
+                        elif node_class == NodeClass.Method and self.full_export:
+                            with contextlib.suppress(Exception):
+                                executable = await node.read_executable()
+                            with contextlib.suppress(Exception):
+                                user_executable = await node.read_user_executable()
+                        opc_node: OpcUaNode = OpcUaNode(
+                            node_id=node_id,
+                            browse_name=browse_name,
+                            display_name=display_name,
+                            node_class=self.NODE_CLASS_NAMES.get(node_class, str(node_class)),
+                            data_type=data_type_name or data_type,
+                            value=value,
+                            parent_id=parent_id,
+                            depth=depth,
+                            namespace_index=namespace_index,
+                            is_namespace_node=is_namespace_node,
+                            description=description,
+                            access_level=access_level,
+                            user_access_level=user_access_level,
+                            write_mask=write_mask,
+                            user_write_mask=user_write_mask,
+                            event_notifier=event_notifier,
+                            executable=executable,
+                            user_executable=user_executable,
+                            minimum_sampling_interval=minimum_sampling_interval,
+                            historizing=historizing,
+                        )
+                        result.add_node(opc_node)
+                        if depth < self.max_depth:
+                            try:
+                                children: list[Node] = await node.get_children()
+                                for child in children:
+                                    await browse_with_progress(
+                                        node=child,
+                                        parent_id=node_id,
+                                        depth=depth + 1,
+                                        result=result,
+                                    )
+                            except Exception as e:
+                                logger.debug(f"Could not get children for {node_id}: {e}")
+                    except Exception as e:
+                        logger.debug(f"Error browsing node at depth {depth}: {e}")
+
+                await browse_with_progress(
+                    node=start_node,
+                    parent_id=None,
+                    depth=0,
+                    result=result,
+                )
 
             # Apply namespace filtering if configured
             if self.namespaces_only:

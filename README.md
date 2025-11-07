@@ -1280,32 +1280,6 @@ async def test_async_operation(mock_client):
     assert result.success is True
 ```
 
-### Test Coverage Goals
-
-| Module | Current Coverage | Goal | Status |
-|--------|-----------------|------|--------|
-| `browser.py` | 100% | 100% | ✅ Achieved |
-| `models.py` | 100% | 100% | ✅ Achieved |
-| `strategies/` | 100% | 100% | ✅ Achieved |
-| `client.py` | 96% | 95%+ | ✅ Achieved |
-| `exporter.py` | 94% | 90%+ | ✅ Achieved |
-| `generate_cert.py` | 97% | 95%+ | ✅ Achieved |
-| `cli.py` | 90% | 90%+ | ✅ Achieved |
-| **Overall** | **95%+** | **90%+** | ✅ Achieved |
-
-### Test Best Practices
-
-1. **Isolation** - Each test should be independent and not rely on others
-2. **Naming** - Use descriptive names: `test_browse_with_valid_node_id_returns_success`
-3. **AAA Pattern** - Arrange, Act, Assert structure for clarity
-4. **Mocking** - Mock external dependencies (OPC UA server, file I/O, network)
-5. **Coverage** - Aim for 90%+ coverage, 100% for critical paths
-6. **Performance** - Mark slow tests with `@pytest.mark.slow`
-7. **Documentation** - Add docstrings explaining what each test verifies
-8. **Parametrization** - Use `@pytest.mark.parametrize` for testing multiple inputs
-9. **Fixtures** - Share common setup via fixtures in `conftest.py`
-10. **Assertions** - One logical assertion per test when possible
-
 ### Troubleshooting Tests
 
 #### Common Issues and Solutions
