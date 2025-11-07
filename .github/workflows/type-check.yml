@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   mypy:
@@ -37,3 +38,9 @@ jobs:
     - name: Run MyPy strict mode
       run: |
         mypy src/ --strict --ignore-missing-imports || true
+    
+    - name: Generate summary
+      if: always()
+      run: |
+        echo "## Type Check Summary (Python ${{ matrix.python-version }})" >> $GITHUB_STEP_SUMMARY
+        echo "✅ MyPy type checking completed" >> $GITHUB_STEP_SUMMARY

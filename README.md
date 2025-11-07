@@ -1,6 +1,7 @@
 <p align="center">
-    <h1 align="center" style="font-size:2.5em;"><strong>OPC UA Exporter</strong></h1>
+  <h1 align="center" style="font-size:2.5em;"><strong>OPC UA Exporter</strong></h1>
 </p>
+
 <p align="center">
   <a href="https://www.python.org/downloads/" target="_blank">
     <img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python Version" />
@@ -11,21 +12,24 @@
   <a href="https://github.com/FreeOpcUa/opcua-asyncio" target="_blank">
     <img src="https://img.shields.io/badge/asyncua-latest-green.svg" alt="asyncua" />
   </a>
+</p>
+
+<p align="center">
   <a href="https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/tests.yml" target="_blank">
     <img src="https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/tests.yml/badge.svg?branch=main" alt="Tests" />
-  </a>
-  <a href="https://codecov.io/gh/Mandarinetto10/opc_ua_exporter" target="_blank">
-    <img src="https://codecov.io/gh/Mandarinetto10/opc_ua_exporter/branch/main/graph/badge.svg?flag=unittest" alt="Coverage" />
   </a>
   <a href="https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/code-quality.yml" target="_blank">
     <img src="https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/code-quality.yml/badge.svg?branch=main" alt="Code Quality" />
   </a>
-  <a href="https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/docs.yml" target="_blank">
-    <img src="https://img.shields.io/badge/docs-passing-brightgreen.svg" alt="Docs" />
-  </a>
   <a href="https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/type-check.yml" target="_blank">
     <img src="https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/type-check.yml/badge.svg?branch=main" alt="Type Check" />
   </a>
+  <a href="https://codecov.io/gh/Mandarinetto10/opc_ua_exporter" target="_blank">
+    <img src="https://codecov.io/gh/Mandarinetto10/opc_ua_exporter/branch/main/graph/badge.svg" alt="Coverage" />
+  </a>
+</p>
+
+<p align="center">
   <a href="https://github.com/Mandarinetto10/opc_ua_exporter/issues" target="_blank">
     <img src="https://img.shields.io/github/issues/Mandarinetto10/opc_ua_exporter?logo=github" alt="Issues" />
   </a>
@@ -38,8 +42,11 @@
   <a href="https://github.com/Mandarinetto10/opc_ua_exporter/network/members" target="_blank">
     <img src="https://img.shields.io/github/forks/Mandarinetto10/opc_ua_exporter?style=social" alt="Forks" />
   </a>
-  <p align="center">
-    A professional, feature-rich CLI for browsing and exporting OPC UA server address spaces. The tool embraces SOLID principles, asynchronous design, and first-class security support to operate safely in production environments.</p>
+</p>
+
+<p align="center">
+  <em>A professional, feature-rich CLI for browsing and exporting OPC UA server address spaces.<br>
+  Embraces SOLID principles, asynchronous design, and first-class security support to operate safely in production environments.</em>
 </p>
 
 ---
