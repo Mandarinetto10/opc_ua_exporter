@@ -61,17 +61,6 @@ NodeId,BrowseName,DisplayName,FullPath,NodeClass,DataType,Value,ParentId,Depth,N
 "ns=2;s=Studio",Studio,Studio,Studio,Object,,,0,2,False,2025-11-05T09:34:35.737218
 "ns=2;s=Studio.Tags",Tags,Tags,Studio/Tags,Object,,"ns=2;s=Studio",1,2,False,2025-11-05T09:34:35.738245
 "ns=2;s=Studio.Tags.System.Date",Date,Date,Studio/Tags/System/Date,Variable,String,,"ns=2;s=Studio.Tags.System",3,2,False,2025-11-05T09:34:35.744225
-
-# Summary
-Total Nodes,8931
-Max Depth,5
-Namespaces,3
-
-# Namespaces
-Index,URI
-0,http://opcfoundation.org/UA/
-1,urn:WSM-01153:Studio:OpcUaServer
-2,urn:Studio
 ```
 
 **Best For:**

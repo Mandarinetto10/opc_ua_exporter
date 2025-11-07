@@ -437,11 +437,9 @@ async def execute_export(args: argparse.Namespace) -> int:
             result = await browser.browse(start_node_id=args.node_id)
 
             if not result.success:
-                logger.error(f"❌ Browse failed: {result.error_message}")
                 return 1
 
             if result.total_nodes == 0:
-                logger.warning("⚠️  No nodes discovered - nothing to export")
                 return 1
 
             logger.info(f"Browse completed: {result.total_nodes} nodes discovered")
