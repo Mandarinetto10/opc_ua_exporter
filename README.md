@@ -29,29 +29,16 @@ A professional, feature-rich CLI for browsing and exporting OPC UA server addres
   - [Logging](#logging)
 - [Command Reference](#command-reference)
   - [Common Arguments](#common-arguments)
+  - [Security Policies](#security-policies)
   - [Browse Command](#browse-command)
   - [Browse Examples](#browse-examples)
-    - [Example 1: Basic Connection (No Authentication)](#example-1-basic-connection-no-authentication)
-    - [Example 2: Custom Starting Node with Depth](#example-2-custom-starting-node-with-depth)
-    - [Example 3: Username/Password Authentication](#example-3-usernamepassword-authentication)
-    - [Example 4: Secure Connection with Certificates](#example-4-secure-connection-with-certificates)
   - [Export Command](#export-command)
   - [Export Extra Arguments](#export-extra-arguments)
   - [Extended Attributes](#extended-attributes)
   - [Export Examples](#export-examples)
-    - [Example 1: Export to JSON with values](#example-1-export-to-json-with-values)
-    - [Example 2: Export to CSV for Excel analysis](#example-2-export-to-csv-for-excel-analysis)
-    - [Example 3: Export to XML for enterprise integration](#example-3-export-to-xml-for-enterprise-integration)
   - [Generate Certificate Command](#generate-certificate-command)
   - [Certificate Examples](#certificate-examples)
-    - [Example 1: Default Certificate Generation (Recommended)](#example-1-default-certificate-generation-recommended)
-    - [Example 2: Custom Application URI](#example-2-custom-application-uri)
-    - [Example 3: Production Certificate](#example-3-production-certificate)
-    - [Example 4: Testing Environment](#example-4-testing-environment)
   - [Using Generated Certificates](#using-generated-certificates)
-- [Export Output Summary](#export-output-summary)
-- [Security Hardening Checklist](#security-hardening-checklist)
-- [Observability and Monitoring](#observability-and-monitoring)
 - [Testing and Quality Assurance](#testing-and-quality-assurance)
 - [Troubleshooting Quick Wins](#troubleshooting-quick-wins)
 - [Project Layout](#project-layout)
@@ -342,6 +329,10 @@ When `--full-export` is specified, the exporter captures additional node attribu
 | MinimumSamplingInterval | The minimum sampling interval for the node. |
 | Historizing | Indicates if the node is historized. |
 
+See [docs/EXPORT_FORMATS.md](docs/EXPORT_FORMATS.md) (generated from
+[`docs/EXPORT_FORMATS.py`](docs/EXPORT_FORMATS.py)) for the exhaustive field
+reference.
+
 **Usage:**
 ```bash
 # Export as JSON
@@ -385,10 +376,9 @@ python -m opc_browser.cli export -s opc.tcp://server:4840 -f csv -o analysis.csv
 ```
 
 **Result:**
-- Excel-compatible CSV with UTF-8 BOM
-- Summary statistics at bottom
-- Namespace table included
-- Open directly in Excel without import wizard
+- UTF-8 CSV with BOM for spreadsheet compatibility
+- One row per node with base attributes (add `--full-export` for extended fields)
+- Ideal for quick filtering and pivot tables in Excel or LibreOffice
 
 ### Example 3: Export to XML for enterprise integration
 
@@ -397,10 +387,10 @@ python -m opc_browser.cli export -s opc.tcp://server:4840 -f xml --include-value
 ```
 
 **Result:**
-- Auto-generated filename: `export/opcua_export_20251105_093459.xml`
-- Schema-compliant XML structure
-- Values included for all variables
-- Ready for XSLT transformation or schema validation
+- Auto-generated filename (unless `--output` is provided)
+- XML document containing metadata, namespaces, and nodes
+- Includes values for variables when `--include-values` is set
+- Suitable for downstream XML tooling or validation workflows
 
 ### Generate Certificate Command
 
@@ -453,7 +443,9 @@ python -m opc_browser.cli generate-cert
 python -m opc_browser.cli generate-cert --uri "urn:mycompany:opcua:client"
 ```
 
-**Use Case:** Server requires specific Application URI for client validation
+**Best For:**
+- Aligning the certificate with server-side Application URI validation
+- Interoperability with servers enforcing strict URI matching
 
 #### Example 3: Production Certificate
 
@@ -504,8 +496,8 @@ The repository bundles an opinionated test and linting pipeline:
 |---------|-------|
 | `pytest -v` | Async integration tests covering browse and export flows. |
 | `pytest --cov=src/opc_browser` | Coverage report (XML/HTML) for CI visibility. |
-| `ruff check src/ tests/` | Linting with auto-fixes for style and correctness issues. |
-| `black src/ tests/` | Code formatting with 88-character lines. |
+| `ruff check src tests` | Linting with auto-fixes for style and correctness issues. |
+| `black src tests` | Code formatting with 88-character lines. |
 | `mypy src/` | Static typing across the entire client and CLI stack. |
 
 Refer to [docs/TESTING.md](docs/TESTING.md) for expanded guidance, including CI matrix details, troubleshooting flaky tests, and interpreting coverage artifacts.

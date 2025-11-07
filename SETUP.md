@@ -89,13 +89,20 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+### Reproducible Installation (Pinned Versions)
+
+```bash
+pip install -r requirements.lock
+```
+
 ### Development Mode Installation (with optional dependencies)
 
 ```bash
 pip install -e ".[dev]"
 ```
 
-This command installs the package in "editable" mode, allowing you to modify the code without reinstalling.
+The editable install keeps the package linked to your working copy so code
+changes are immediately reflected when running the CLI.
 
 ## Step 6: Verify Installation
 
@@ -119,6 +126,16 @@ python -m opc_browser.cli --help
 ```
 
 You should see the help output with all available commands and options.
+
+### Optional: Run Quality Checks
+
+Once dependencies are installed you can execute the project's quality suite:
+
+```bash
+pytest -q
+ruff check src tests
+mypy src
+```
 
 ## Step 8: Generate Certificates (Optional but Recommended)
 
@@ -177,3 +194,4 @@ For issues or questions:
 - Verify system requirements
 - Consult the official [asyncua documentation](https://github.com/FreeOpcUa/opcua-asyncio)
 - Open an issue on [GitHub](https://github.com/Mandarinetto10/opc_ua_exporter/issues)
+
