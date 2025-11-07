@@ -364,8 +364,7 @@ When `--full-export` is specified, the exporter captures additional node attribu
 | MinimumSamplingInterval | The minimum sampling interval for the node. |
 | Historizing | Indicates if the node is historized. |
 
-See [docs/EXPORT_FORMATS.md](docs/EXPORT_FORMATS.md) (generated from
-[`docs/EXPORT_FORMATS.py`](docs/EXPORT_FORMATS.py)) for the exhaustive field
+See [docs/EXPORT_FORMATS.md](docs/EXPORT_FORMATS.md) for the exhaustive field
 reference.
 
 **Usage:**

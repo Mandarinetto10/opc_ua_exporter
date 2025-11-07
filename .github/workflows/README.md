@@ -36,18 +36,6 @@ Static type checking with MyPy:
 
 **Badge:** ![Type Check](https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/type-check.yml/badge.svg?branch=main)
 
-### 📚 Documentation ([docs.yml](workflows/docs.yml))
-
-**Trigger:** Push/PR to `main` or `develop`
-
-Validates documentation completeness:
-- Checks for required documentation files (README, SETUP, LICENSE, CHANGELOG)
-- Validates Python docstrings
-- Verifies docs directory structure
-- Checks README badges
-
-**Badge:** ![Documentation](https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/docs.yml/badge.svg?branch=main)
-
 ## Badges
 
 All workflow badges are displayed in the [main README](../README.md) header using HTML for better formatting:
