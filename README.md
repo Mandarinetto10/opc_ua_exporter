@@ -24,9 +24,6 @@
   <a href="https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/type-check.yml" target="_blank">
     <img src="https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/type-check.yml/badge.svg?branch=main" alt="Type Check" />
   </a>
-  <a href="https://codecov.io/gh/Mandarinetto10/opc_ua_exporter" target="_blank">
-    <img src="https://codecov.io/gh/Mandarinetto10/opc_ua_exporter/branch/main/graph/badge.svg" alt="Coverage" />
-  </a>
 </p>
 
 <p align="center">

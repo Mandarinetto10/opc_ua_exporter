@@ -11,7 +11,6 @@ This directory contains GitHub Actions workflows for continuous integration and 
 Runs the full test suite across multiple platforms and Python versions:
 - **Platforms:** Ubuntu, Windows, macOS
 - **Python versions:** 3.10, 3.11, 3.12
-- **Coverage:** Uploads to [Codecov](https://codecov.io/gh/Mandarinetto10/opc_ua_exporter)
 
 **Badge:** ![Tests](https://github.com/Mandarinetto10/opc_ua_exporter/actions/workflows/tests.yml/badge.svg?branch=main)
 
@@ -49,18 +48,6 @@ All workflow badges are displayed in the [main README](../README.md) header usin
 </p>
 ```
 
-### Coverage Badge
-
-The coverage badge is provided by [Codecov](https://codecov.io):
-
-```html
-<a href="https://codecov.io/gh/Mandarinetto10/opc_ua_exporter">
-  <img src="https://codecov.io/gh/Mandarinetto10/opc_ua_exporter/branch/main/graph/badge.svg" alt="Coverage" />
-</a>
-```
-
-Configuration is in [`.codecov.yml`](../.codecov.yml).
-
 ## Local Testing
 
 Run these commands before pushing to catch issues early:
@@ -78,12 +65,6 @@ black --check src/ tests/
 mypy src/
 ```
 
-## Secrets
-
-The following secrets are configured in the repository:
-
-- `CODECOV_TOKEN` (optional for public repos): Upload token for Codecov
-
 ## Permissions
 
 All workflows use minimal permissions following the principle of least privilege:
@@ -98,10 +79,8 @@ All workflows use minimal permissions following the principle of least privilege
 4. **Job summaries**: Generate GitHub Step Summaries for better visibility
 5. **Fail-fast**: Disabled for test matrix to see all failures
 6. **Badge format**: Use `?branch=main` parameter for branch-specific badges
-7. **Coverage precision**: Set to 2 decimal places in `.codecov.yml`
 
 ## References
 
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [Codecov Documentation](https://docs.codecov.com/)
 - [Shields.io Badge Documentation](https://shields.io/)
