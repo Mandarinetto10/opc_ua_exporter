@@ -236,7 +236,7 @@ class OpcUaNode:
         """
         value_str: str = ""
         if self.value is not None:
-            if isinstance(self.value, (ua.DataValue, ua.Variant)):
+            if isinstance(self.value, ua.DataValue | ua.Variant):
                 value_str = str(self.value.Value if hasattr(self.value, "Value") else self.value)
             else:
                 value_str = str(self.value)
@@ -288,7 +288,7 @@ class OpcUaNode:
         """
         value_serialized: str | None = None
         if self.value is not None:
-            if isinstance(self.value, (ua.DataValue, ua.Variant)):
+            if isinstance(self.value, ua.DataValue | ua.Variant):
                 value_serialized = str(
                     self.value.Value if hasattr(self.value, "Value") else self.value
                 )
