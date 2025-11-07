@@ -30,7 +30,8 @@ All notable changes to this project will be documented in this file.
   - JSON: Pretty-printed, hierarchical, ISO timestamps
   - XML: Schema-compliant, indented, metadata sections
 - Clean project structure: CLI, models, client logic, browser, exporter, strategies.
-- Comprehensive documentation: README, setup guide, troubleshooting, usage examples.
+- Comprehensive documentation suite: detailed README (architecture, configuration, security hardening, command reference),
+  setup guide, testing instructions, troubleshooting playbook, and export format references.
 - Comprehensive test suite: for browser module, pytest-based, async/await support, fixtures, code quality checks (ruff, black, mypy), and CI integration with GitHub Actions.
 
 [1.0.0]: https://github.com/Mandarinetto10/opc_ua_exporter/releases/tag/v1.0.0

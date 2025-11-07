@@ -283,7 +283,8 @@ async def execute_browse(args: argparse.Namespace) -> int:
         logger.info(f"Private Key:     {args.key}")
     if args.user:
         logger.info(f"Username:        {args.user}")
-        logger.info(f"Password:        {'*' * len(args.password) if args.password else 'Not set'}")
+        # SECURITY: never log password length or value to prevent information leaks
+        logger.info("Password:        [hidden]")
     logger.info("=" * 80)
 
     try:
@@ -410,7 +411,8 @@ async def execute_export(args: argparse.Namespace) -> int:
         logger.info(f"Private Key:      {args.key}")
     if args.user:
         logger.info(f"Username:         {args.user}")
-        logger.info(f"Password:         {'*' * len(args.password) if args.password else 'Not set'}")
+        # SECURITY: never log password length or value to prevent information leaks
+        logger.info("Password:         [hidden]")
     logger.info("=" * 80)
 
     try:

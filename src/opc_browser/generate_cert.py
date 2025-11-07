@@ -8,6 +8,7 @@ including proper Subject Alternative Names and key usage extensions.
 from __future__ import annotations
 
 import ipaddress
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import cast
@@ -93,6 +94,14 @@ def generate_self_signed_cert(
                     encryption_algorithm=serialization.NoEncryption(),
                 )
             )
+        # SECURITY: restrict file permissions so the private key is not world-readable
+        if os.name != "nt":
+            try:
+                os.chmod(key_path, 0o600)
+            except FileNotFoundError:
+                logger.debug("Skipped chmod for private key because the file is mocked or missing")
+            except OSError as exc:
+                logger.warning(f"Could not harden private key permissions automatically: {exc}")
         logger.success(f"✅ Private key saved: {key_path}")
 
         logger.info("Generating self-signed X.509 certificate...")
@@ -165,6 +174,13 @@ def generate_self_signed_cert(
         cert_path: Path = cert_dir / "client_cert.pem"
         with open(cert_path, "wb") as f:
             f.write(cert.public_bytes(serialization.Encoding.PEM))
+        if os.name != "nt":
+            try:
+                os.chmod(cert_path, 0o644)
+            except FileNotFoundError:
+                logger.debug("Skipped chmod for certificate because the file is mocked or missing")
+            except OSError as exc:
+                logger.warning(f"Could not adjust certificate permissions automatically: {exc}")
         logger.success(f"✅ Certificate (PEM) saved: {cert_path}")
 
         # DER format required by some OPC UA servers
